@@ -165,8 +165,9 @@ public sealed interface Result<out D, out E : Auth0Error> {
 
 ### Ergonomic helpers (as extension functions, not members)
 
-`fold`, `getOrNull`, `errorOrNull`, `isSuccess`, `isFailure`, `map`. Added now
-(small set); grow lazily as call sites need more.
+`fold`, `getOrNull`, `errorOrNull`, `map`, `flatMap`. Added now (small set); grow
+lazily as call sites need more. (`isSuccess`/`isFailure` were considered but
+dropped as not yet needed; `flatMap` added for chaining Result-returning ops.)
 
 ---
 

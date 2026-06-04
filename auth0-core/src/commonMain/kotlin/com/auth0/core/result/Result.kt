@@ -19,8 +19,7 @@ sealed interface Result<out D, out E : Auth0Error> {
 }
 
 /**
- * Runs [onSuccess] or [onFailure] depending on which variant this is. Use it to
- * exhaustively handle both branches in one expression.
+ * Runs [onSuccess] or [onFailure] depending on which variant this is.
  */
 inline fun <D, E : Auth0Error> Result<D, E>.fold(
     onSuccess: (D) -> Unit,
