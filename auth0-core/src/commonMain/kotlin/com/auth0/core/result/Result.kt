@@ -35,14 +35,7 @@ inline fun <D, E : Auth0Error> Result<D, E>.fold(
 fun <D, E : Auth0Error> Result<D, E>.getOrNull(): D? =
     when (this) {
         is Result.Success -> data
-        else -> null
-    }
-
-/** Returns the error, or `null` if this is a [Result.Success]. */
-fun <D, E : Auth0Error> Result<D, E>.errorOrNull(): E? =
-    when (this) {
-        is Result.Failure -> error
-        else -> null
+        is Result.Failure -> null
     }
 
 /**

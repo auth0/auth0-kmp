@@ -12,7 +12,6 @@ import kotlin.time.Instant
  * @param refreshToken token used to obtain new credentials; requires the
  *   `offline_access` scope. `null` when not granted.
  * @param scope the scopes granted by Auth0, if any.
- * @param recoveryCode MFA recovery code to surface to the user once, if present.
  */
 data class Credentials(
     val accessToken: String,
@@ -21,5 +20,8 @@ data class Credentials(
     val expiresAt: Instant,
     val refreshToken: String? = null,
     val scope: String? = null,
-    val recoveryCode: String? = null,
-)
+) {
+    override fun toString(): String {
+        return "Credentials(idToken='xxxxx', accessToken='xxxxx', type='$tokenType', refreshToken='xxxxx', expiresAt='$expiresAt', scope='$scope')"
+    }
+}
