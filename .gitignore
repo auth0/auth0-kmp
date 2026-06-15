@@ -20,3 +20,6 @@ node_modules/
 
 # Local-only Claude Code collaboration rules (custom for now)
 CLAUDE.md
+
+# Local-only planning/decision notes (kept out of remote)
+plans/

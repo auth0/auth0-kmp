@@ -18,7 +18,7 @@ kotlin {
     }
 
     android {
-        namespace = "com.auth0"
+        namespace = "com.auth0.kmp"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 

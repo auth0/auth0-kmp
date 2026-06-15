@@ -30,3 +30,4 @@ dependencyResolutionManagement {
 
 include(":auth0-core")
 include(":auth0-kmp")
+include(":auth0-networking")
