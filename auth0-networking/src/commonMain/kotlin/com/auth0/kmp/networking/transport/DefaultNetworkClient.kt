@@ -1,6 +1,6 @@
 package com.auth0.kmp.networking.transport
 
-import com.auth0.kmp.core.error.NetworkError
+import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.request.NetworkRequest
@@ -17,7 +17,7 @@ internal class DefaultNetworkClient(
         request: NetworkRequest,
         retryPolicy: RetryPolicy,
         deserialize: (String) -> T,
-    ): Result<T, NetworkError> {
+    ): Result<T, TransportError> {
         val url = resolver.resolve(request.path)
         return withRetry(retryPolicy) { safeCall(client, url, request, deserialize) }
     }

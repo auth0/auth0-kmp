@@ -1,6 +1,6 @@
 package com.auth0.kmp.networking.transport
 
-import com.auth0.kmp.networking.NetworkingConfiguration
+import com.auth0.kmp.core.NetworkingConfiguration
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.HttpTimeout

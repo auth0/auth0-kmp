@@ -1,6 +1,6 @@
 package com.auth0.kmp.networking.retry
 
-import com.auth0.kmp.core.error.NetworkError
+import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.result.Result
 import kotlinx.coroutines.delay
 import kotlin.time.Duration
@@ -17,8 +17,8 @@ import kotlin.time.Duration
 internal suspend fun <T> withRetry(
     policy: RetryPolicy,
     delayFn: suspend (Duration) -> Unit = { delay(it) },
-    block: suspend () -> Result<T, NetworkError>
-): Result<T, NetworkError> {
+    block: suspend () -> Result<T, TransportError>
+): Result<T, TransportError> {
     // attempt counts tries (not retries): 1 on the first call, so maxAttempts == 1 never retries.
     var attempt = 1
     while (true) {

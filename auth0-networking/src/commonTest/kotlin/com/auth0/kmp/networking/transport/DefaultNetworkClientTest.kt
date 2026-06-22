@@ -1,7 +1,7 @@
 package com.auth0.kmp.networking.transport
 
 import com.auth0.kmp.core.Auth0Account
-import com.auth0.kmp.core.error.NetworkError
+import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.networking.request.HttpMethod
 import com.auth0.kmp.networking.request.NetworkRequest
@@ -74,7 +74,7 @@ class DefaultNetworkClientTest {
         ) { it }
 
         assertEquals(3, attempts)
-        assertEquals(Result.Failure(NetworkError.Server(500, "boom")), result)
+        assertEquals(Result.Failure(TransportError.Server(500, "boom")), result)
     }
 
     @Test

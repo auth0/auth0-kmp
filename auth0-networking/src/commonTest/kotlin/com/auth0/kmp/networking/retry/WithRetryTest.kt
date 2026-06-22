@@ -1,6 +1,6 @@
 package com.auth0.kmp.networking.retry
 
-import com.auth0.kmp.core.error.NetworkError
+import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.result.Result
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -17,7 +17,7 @@ class WithRetryTest {
     private fun policy(
         maxAttempts: Int,
         delay: Duration = 10.milliseconds,
-        retryOn: (NetworkError) -> Boolean = { true },
+        retryOn: (TransportError) -> Boolean = { true },
     ) = RetryPolicy(
         maxAttempts = maxAttempts,
         backoff = Backoff.Fixed(delay),
@@ -25,12 +25,12 @@ class WithRetryTest {
     )
 
     /** Pops a canned [Result] per call and counts invocations. */
-    private class ScriptedBlock(results: List<Result<String, NetworkError>>) {
+    private class ScriptedBlock(results: List<Result<String, TransportError>>) {
         private val queue = ArrayDeque(results)
         var calls = 0
             private set
 
-        suspend fun invoke(): Result<String, NetworkError> {
+        suspend fun invoke(): Result<String, TransportError> {
             calls++
             return queue.removeFirst()
         }
@@ -51,8 +51,8 @@ class WithRetryTest {
     fun retriesUntilSuccess_thenStops() = runTest {
         val block = ScriptedBlock(
             listOf(
-                Result.Failure(NetworkError.Timeout),
-                Result.Failure(NetworkError.Timeout),
+                Result.Failure(TransportError.Timeout),
+                Result.Failure(TransportError.Timeout),
                 Result.Success("ok"),
             )
         )
@@ -68,15 +68,15 @@ class WithRetryTest {
     fun exhaustsBudget_thenReturnsLastFailure() = runTest {
         val block = ScriptedBlock(
             listOf(
-                Result.Failure(NetworkError.Timeout),
-                Result.Failure(NetworkError.Timeout),
-                Result.Failure(NetworkError.Unauthorized),
+                Result.Failure(TransportError.Timeout),
+                Result.Failure(TransportError.Timeout),
+                Result.Failure(TransportError.Server(401, "nope")),
             )
         )
 
         val result = withRetry(policy(maxAttempts = 3), recordingDelay) { block.invoke() }
 
-        assertEquals(Result.Failure(NetworkError.Unauthorized), result)
+        assertEquals(Result.Failure(TransportError.Server(401, "nope")), result)
         assertEquals(3, block.calls)
         assertEquals(2, recordedDelays.size)
     }
@@ -85,17 +85,17 @@ class WithRetryTest {
     fun stopsImmediately_whenRetryOnReturnsFalse() = runTest {
         val block = ScriptedBlock(
             listOf(
-                Result.Failure(NetworkError.Forbidden),
+                Result.Failure(TransportError.Server(403, "nope")),
                 Result.Success("unreached"),
             )
         )
 
         val result = withRetry(
-            policy(maxAttempts = 5, retryOn = { it != NetworkError.Forbidden }),
+            policy(maxAttempts = 5, retryOn = { !(it is TransportError.Server && it.status == 403) }),
             recordingDelay,
         ) { block.invoke() }
 
-        assertEquals(Result.Failure(NetworkError.Forbidden), result)
+        assertEquals(Result.Failure(TransportError.Server(403, "nope")), result)
         assertEquals(1, block.calls)
         assertTrue(recordedDelays.isEmpty())
     }
@@ -104,9 +104,9 @@ class WithRetryTest {
     fun delaysFollowBackoffSequence_inOrder() = runTest {
         val block = ScriptedBlock(
             listOf(
-                Result.Failure(NetworkError.Timeout),
-                Result.Failure(NetworkError.Timeout),
-                Result.Failure(NetworkError.Timeout),
+                Result.Failure(TransportError.Timeout),
+                Result.Failure(TransportError.Timeout),
+                Result.Failure(TransportError.Timeout),
                 Result.Success("ok"),
             )
         )
@@ -130,14 +130,14 @@ class WithRetryTest {
     fun none_runsExactlyOnce_evenOnFailure() = runTest {
         val block = ScriptedBlock(
             listOf(
-                Result.Failure(NetworkError.Timeout),
+                Result.Failure(TransportError.Timeout),
                 Result.Success("unreached"),
             )
         )
 
         val result = withRetry(RetryPolicy.None, recordingDelay) { block.invoke() }
 
-        assertEquals(Result.Failure(NetworkError.Timeout), result)
+        assertEquals(Result.Failure(TransportError.Timeout), result)
         assertEquals(1, block.calls)
         assertTrue(recordedDelays.isEmpty())
     }

@@ -1,6 +1,6 @@
 package com.auth0.kmp.networking.transport
 
-import com.auth0.kmp.core.error.NetworkError
+import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.networking.request.HttpMethod
 import com.auth0.kmp.networking.request.NetworkRequest
@@ -61,21 +61,21 @@ class SafeCallTest {
     }
 
     @Test
-    fun mapsUnauthorized_on401() = runTest {
+    fun mapsServerWithBody_on401() = runTest {
         val client = respondingClient(HttpStatusCode.Unauthorized, "nope")
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(NetworkError.Unauthorized), result)
+        assertEquals(Result.Failure(TransportError.Server(401, "nope")), result)
     }
 
     @Test
-    fun mapsForbidden_on403() = runTest {
+    fun mapsServerWithBody_on403() = runTest {
         val client = respondingClient(HttpStatusCode.Forbidden, "nope")
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(NetworkError.Forbidden), result)
+        assertEquals(Result.Failure(TransportError.Server(403, "nope")), result)
     }
 
     @Test
@@ -84,7 +84,7 @@ class SafeCallTest {
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(NetworkError.Server(400, "bad input")), result)
+        assertEquals(Result.Failure(TransportError.Server(400, "bad input")), result)
     }
 
     @Test
@@ -93,7 +93,7 @@ class SafeCallTest {
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(NetworkError.Server(500, "boom")), result)
+        assertEquals(Result.Failure(TransportError.Server(500, "boom")), result)
     }
 
     @Test
@@ -104,7 +104,7 @@ class SafeCallTest {
             throw SerializationException("bad field")
         }
 
-        assertEquals(Result.Failure(NetworkError.Serialization("bad field")), result)
+        assertEquals(Result.Failure(TransportError.Serialization("bad field")), result)
     }
 
     @Test
@@ -113,7 +113,7 @@ class SafeCallTest {
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(NetworkError.Timeout), result)
+        assertEquals(Result.Failure(TransportError.Timeout), result)
     }
 
     @Test
@@ -122,7 +122,7 @@ class SafeCallTest {
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(NetworkError.Timeout), result)
+        assertEquals(Result.Failure(TransportError.Timeout), result)
     }
 
     @Test
@@ -131,7 +131,7 @@ class SafeCallTest {
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(NetworkError.Timeout), result)
+        assertEquals(Result.Failure(TransportError.Timeout), result)
     }
 
     @Test
@@ -140,7 +140,7 @@ class SafeCallTest {
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(NetworkError.NoInternet), result)
+        assertEquals(Result.Failure(TransportError.NoInternet), result)
     }
 
     @Test
@@ -149,7 +149,7 @@ class SafeCallTest {
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(NetworkError.Unknown("weird")), result)
+        assertEquals(Result.Failure(TransportError.Unknown("weird")), result)
     }
 
     @Test

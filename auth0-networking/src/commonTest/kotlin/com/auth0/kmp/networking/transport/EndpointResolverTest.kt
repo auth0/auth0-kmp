@@ -42,6 +42,26 @@ class EndpointResolverTest {
     }
 
     @Test
+    fun baseUrl_isHostOnly_whenDomainHasNoScheme() {
+        val resolver = resolver("example.auth0.com")
+        assertEquals("https://example.auth0.com/", resolver.baseUrl)
+    }
+
+    @Test
+    fun baseUrl_stripsPath_whenDomainContainsPath() {
+        val resolver = resolver("example.auth0.com/some/path")
+        assertEquals("https://example.auth0.com/", resolver.baseUrl)
+        assertEquals("https://example.auth0.com/oauth/token", resolver.resolve("/oauth/token"))
+    }
+
+    @Test
+    fun baseUrl_stripsPath_whenDomainHasHttpsAndPath() {
+        val resolver = resolver("https://example.auth0.com/some/path")
+        assertEquals("https://example.auth0.com/", resolver.baseUrl)
+        assertEquals("https://example.auth0.com/oauth/token", resolver.resolve("/oauth/token"))
+    }
+
+    @Test
     fun construction_throws_whenDomainIsHttp() {
         assertFailsWith<IllegalArgumentException> { resolver("http://example.auth0.com") }
     }

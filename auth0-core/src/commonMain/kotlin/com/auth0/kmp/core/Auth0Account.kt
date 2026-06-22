@@ -5,8 +5,11 @@ package com.auth0.kmp.core
  *
  * @param clientId the Client ID of your application, from the Auth0 dashboard.
  * @param domain your Auth0 tenant domain, e.g. `your-tenant.us.auth0.com`.
+ * @param configuration the network transport settings shared by every client
+ *   created for this account.
  */
 class Auth0Account(
     val clientId: String,
     val domain: String,
+    val configuration: NetworkingConfiguration = NetworkingConfiguration(),
 )

@@ -1,4 +1,4 @@
-package com.auth0.kmp.networking
+package com.auth0.kmp.core
 
 /**
  * Configuration for the networking layer.

@@ -16,18 +16,19 @@ import io.ktor.http.appendPathSegments
  */
 internal class EndpointResolver(account: Auth0Account) {
 
-    private val baseUrl: Url
+    private val parsedUrl: Url
+    val baseUrl: String
 
     init {
         val normalized = account.domain.lowercase()
         require(!normalized.startsWith("http://")) {
             "Invalid domain url: '${account.domain}'. Only HTTPS domain URLs are supported. If no scheme is passed, HTTPS will be used."
         }
-        val withScheme = if (normalized.startsWith("https://")) normalized else "https://$normalized"
-        val host = withScheme.removePrefix("https://").substringBefore('/').substringBefore('?').substringBefore('#')
+        val host = normalized.removePrefix("https://").substringBefore('/').substringBefore('?').substringBefore('#')
         require(host.isNotBlank()) { "Invalid domain url: '${account.domain}'" }
-        baseUrl = try {
-            Url(withScheme)
+        baseUrl = "https://$host/"
+        parsedUrl = try {
+            Url(baseUrl)
         } catch (e: URLParserException) {
             throw IllegalArgumentException("Invalid domain url: '${account.domain}'", e)
         }
@@ -40,5 +41,5 @@ internal class EndpointResolver(account: Auth0Account) {
      * @return the absolute URL string.
      */
     fun resolve(path: String): String =
-        URLBuilder(baseUrl).appendPathSegments(path.split('/').filter { it.isNotEmpty() }).buildString()
+        URLBuilder(parsedUrl).appendPathSegments(path.split('/').filter { it.isNotEmpty() }).buildString()
 }
