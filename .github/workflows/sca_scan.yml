@@ -3,7 +3,7 @@ name: SCA
 
 on:
   push:
-    branches: ["master", "main"]
+    branches: ["main"]
 
 jobs:
   snyk-cli:
