@@ -3,7 +3,7 @@ agp = "9.1.1"
 android-compileSdk = "36"
 android-minSdk = "24"
 kotlin = "2.3.21"
-ktor = "3.5.0"
+ktor = "3.5.1"
 kotlinx-serialization = "1.11.0"
 kotlinx-coroutines = "1.11.0"
 
