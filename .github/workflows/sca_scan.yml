@@ -1,11 +1,26 @@
-
 name: SCA
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "**"]
+
+permissions:
+  contents: read
 
 jobs:
-  snyk-cli:
-    uses: atko-security/devsecops-tooling/.github/workflows/sca-scan.yml@main
-    secrets: inherit
+  snyk-scan:
+    name: Snyk dependency scan
+    runs-on: ubuntu-22.04-2cpu-8ram-75ssd  # replace with ubuntu-latest once migrated to public
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup Build Environment
+        uses: ./.github/actions/setup
+
+      - name: Run Snyk
+        uses: atko-security/devsecops-tooling/.github/actions/sca-scan@main
+        with:
+          additional-arguments: "--all-projects"
+          SNYK_TOKEN: ${{ secrets.CIC_SNYK_TOKEN }}
+          SIGNAL_HANDLER_TOKEN: ${{ secrets.SIGNAL_HANDLER_TOKEN }}
