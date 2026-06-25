@@ -25,7 +25,17 @@ class HttpClientFactoryTest {
     private fun clientWithDefaults(defaults: Map<String, String>): Pair<HttpClient, CapturingEngine> {
         val capturing = CapturingEngine()
         val client = HttpClient(capturing.engine) {
-            applyNetworkingConfig(NetworkingConfiguration(defaultHeaders = defaults))
+            // These tests assert header merging only. Long.MAX_VALUE is Ktor's
+            // INFINITE_TIMEOUT_MS sentinel, so HttpTimeout never launches its
+            // timeout coroutine; otherwise runTest's virtual clock auto-advances
+            // to that delay before the MockEngine response resolves, flaking with
+            // HttpRequestTimeoutException.
+            applyNetworkingConfig(
+                NetworkingConfiguration(
+                    defaultHeaders = defaults,
+                    requestTimeoutMillis = Long.MAX_VALUE,
+                )
+            )
         }
         return client to capturing
     }
