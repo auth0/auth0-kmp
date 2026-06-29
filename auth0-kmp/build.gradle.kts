@@ -3,6 +3,13 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
+    alias(libs.plugins.skie)
+}
+
+skie {
+    analytics {
+        enabled.set(false)
+    }
 }
 
 kotlin {
@@ -14,6 +21,7 @@ kotlin {
             baseName = "Auth0"
             isStatic = true
             export(project(":auth0-core"))
+            export(project(":auth0-authentication"))
         }
     }
 
@@ -30,6 +38,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":auth0-core"))
+            api(project(":auth0-authentication"))
         }
     }
 }

@@ -3,9 +3,9 @@ package com.auth0.kmp.core
 /**
  * Configuration for the networking layer.
  *
- * @param enableLogging whether HTTP request and response details are logged.
- *   Logs may contain sensitive data such as tokens, so enable this only for
- *   debugging in non-production environments. Defaults to `false`.
+ * @param enableLogging whether the HTTP request line, URL, and response status
+ *   are logged. Bodies and headers are not logged, so credentials and tokens are
+ *   never written to the log. Intended for debugging; defaults to `false`.
  * @param connectTimeoutMillis time allowed to establish a connection, in
  *   milliseconds.
  * @param requestTimeoutMillis time allowed for the full request to complete, in

@@ -14,12 +14,12 @@ public sealed interface AuthenticationError : Auth0Error {
      * Auth0 received the request and rejected it with an error payload.
      *
      * @param code the Auth0 error code, for example `invalid_grant`.
-     * @param description a human-readable explanation of the failure.
+     * @param errorDescription a human-readable explanation of the failure.
      * @param statusCode the HTTP status code that carried the error.
      */
     public data class ApiError(
         val code: String,
-        val description: String,
+        val errorDescription: String,
         val statusCode: Int,
     ) : AuthenticationError
 

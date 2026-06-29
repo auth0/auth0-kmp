@@ -5,6 +5,9 @@
 xcuserdata
 !src/**/build/
 local.properties
+
+# Auth0 sample iOS config — holds tenant domain/clientId, never commit real values
+Config.xcconfig
 .idea
 .DS_Store
 captures

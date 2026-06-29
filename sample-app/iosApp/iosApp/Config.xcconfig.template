@@ -1,0 +1,10 @@
+// TEMPLATE — copy this file to `Config.xcconfig` (same folder) and fill in your
+// Auth0 tenant values. `Config.xcconfig` is git-ignored; this template is committed
+// so contributors know what to provide.
+//
+// AUTH0_DOMAIN: your tenant host, NO scheme (e.g. your-tenant.us.auth0.com).
+//   xcconfig uses // for comments, so a value can't contain "//" — host-only is
+//   required; the SDK prepends https:// itself.
+// AUTH0_CLIENT_ID: the Client ID of your Auth0 application.
+AUTH0_DOMAIN =
+AUTH0_CLIENT_ID =
