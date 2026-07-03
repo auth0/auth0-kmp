@@ -6,6 +6,25 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
+val generateVersionFile by tasks.registering {
+    val versionFile = rootProject.file(".version")
+    val outputDir = layout.buildDirectory.dir("generated/version/commonMain/kotlin")
+    inputs.file(versionFile)
+    outputs.dir(outputDir)
+    doLast {
+        val version = versionFile.readLines().first().trim()
+        val pkgDir = outputDir.get().dir("com/auth0/kmp/core").asFile
+        pkgDir.mkdirs()
+        pkgDir.resolve("Version.kt").writeText(
+            """
+            package com.auth0.kmp.core
+
+            internal const val SDK_VERSION: String = "$version"
+            """.trimIndent() + "\n"
+        )
+    }
+}
+
 kotlin {
     compilerOptions {
         optIn.add("com.auth0.kmp.core.annotation.InternalAuth0Api")
@@ -33,13 +52,16 @@ kotlin {
     }
 
     sourceSets {
-        commonMain.dependencies {
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.client.logging)
-            implementation(libs.ktor.serialization.kotlinx.json)
-            implementation(libs.kotlinx.serialization.json)
-            implementation(libs.kotlinx.coroutines.core)
+        commonMain {
+            kotlin.srcDir(generateVersionFile)
+            dependencies {
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.ktor.client.logging)
+                implementation(libs.ktor.serialization.kotlinx.json)
+                implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kotlinx.coroutines.core)
+            }
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
