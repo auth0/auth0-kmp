@@ -28,7 +28,8 @@ class DefaultCredentialsManagerTest {
         clock: Clock = MutableClock(now),
         clientId: String = this.clientId,
         storeKey: String = this.storeKey,
-    ) = DefaultCredentialsManager(clientId, tokenClient, storage, storeKey, clock)
+        lockProvider: LockProvider = MutexRegistry(),
+    ) = DefaultCredentialsManager(clientId, tokenClient, storage, storeKey, clock, lockProvider)
 
     private fun storageWith(credentials: Credentials): FakeStorage =
         FakeStorage(mutableMapOf(storeKey to CredentialsSerializer.encode(credentials)))
@@ -239,6 +240,45 @@ class DefaultCredentialsManagerTest {
             assertIs<Result.Success<Credentials>>(it)
             assertEquals(renewed, it.data)
         }
+    }
+
+    @Test
+    fun two_managers_same_slot_share_one_lock() = runTest {
+        val stored = credentials(expiresAt = now - 10.seconds, refreshToken = "stored-rt")
+        val renewed = credentials(accessToken = "new-at", expiresAt = now + 3600.seconds)
+        val storage = storageWith(stored)
+        val gate = Mutex(locked = true)
+        val tokenClient = FakeTokenClient(Result.Success(renewed), delayGate = gate)
+        val sharedLocks = MutexRegistry()
+        val m1 = manager(storage, tokenClient, lockProvider = sharedLocks)
+        val m2 = manager(storage, tokenClient, lockProvider = sharedLocks)
+
+        val a = async { m1.getCredentials() }
+        val b = async { m2.getCredentials() }
+        gate.unlock()
+        awaitAll(a, b)
+
+        assertEquals(1, tokenClient.callCount)
+    }
+
+    @Test
+    fun two_managers_different_slots_do_not_share_lock() = runTest {
+        val stored = credentials(expiresAt = now - 10.seconds, refreshToken = "stored-rt")
+        val renewed = credentials(accessToken = "new-at", expiresAt = now + 3600.seconds)
+        val blob = CredentialsSerializer.encode(stored)
+        val storage = FakeStorage(mutableMapOf("slot-a" to blob, "slot-b" to blob))
+        val gate = Mutex(locked = true)
+        val tokenClient = FakeTokenClient(Result.Success(renewed), delayGate = gate)
+        val sharedLocks = MutexRegistry()
+        val m1 = manager(storage, tokenClient, storeKey = "slot-a", lockProvider = sharedLocks)
+        val m2 = manager(storage, tokenClient, storeKey = "slot-b", lockProvider = sharedLocks)
+
+        val a = async { m1.getCredentials() }
+        val b = async { m2.getCredentials() }
+        gate.unlock()
+        awaitAll(a, b)
+
+        assertEquals(2, tokenClient.callCount)
     }
 
     // ---- renewal failure ----

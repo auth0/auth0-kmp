@@ -4,6 +4,7 @@ import com.auth0.kmp.core.credentials.CredentialsManager
 import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
+import com.auth0.kmp.core.result.map
 import com.auth0.kmp.core.token.TokenClient
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
@@ -15,25 +16,16 @@ internal class DefaultCredentialsManager(
     private val storage: Storage,
     private val storeKey: String,
     private val clock: Clock,
+    private val lockProvider: LockProvider = MutexRegistry.Default,
 ) : CredentialsManager {
 
     override suspend fun saveCredentials(
         credentials: Credentials,
     ): Result<Unit, CredentialsManagerError> =
-        runCatching {
-            storage.store(storeKey, CredentialsSerializer.encode(credentials))
-        }.fold(
-            onSuccess = { Result.Success(Unit) },
-            onFailure = { Result.Failure(CredentialsManagerError.StoreFailed(it)) }
-        )
-
+        storageResult { storage.store(storeKey, CredentialsSerializer.encode(credentials)) }
 
     override suspend fun clearCredentials(): Result<Unit, CredentialsManagerError> =
-        runCatching { storage.remove(storeKey) }
-            .fold(
-                onSuccess = { Result.Success(Unit) },
-                onFailure = { Result.Failure(CredentialsManagerError.StoreFailed(it)) },
-            )
+        storageResult { storage.remove(storeKey) }
 
     override suspend fun hasValidCredentials(minTtl: Long): Boolean {
         val stored = decodeStored() ?: return false
@@ -73,9 +65,7 @@ internal class DefaultCredentialsManager(
             scope,
             extraParams = parameters
         )
-        val result = tokenClient.fetchToken(grant, headers)
-
-        val renewed = when (result) {
+        val renewed = when (val result = tokenClient.fetchToken(grant, headers)) {
             is Result.Failure -> return@withAccountLock Result.Failure(result.error.toCredentialsManagerError())
             is Result.Success -> result.data
         }
@@ -94,16 +84,18 @@ internal class DefaultCredentialsManager(
             )
         }
 
-        runCatching {
-            storage.store(storeKey, CredentialsSerializer.encode(merged))
-        }.fold(
-            onSuccess = { Result.Success(merged) },
-            onFailure = { Result.Failure(CredentialsManagerError.StoreFailed(it)) },
-        )
+        storageResult { storage.store(storeKey, CredentialsSerializer.encode(merged)) }
+            .map { merged }
     }
 
     private suspend fun <T> withAccountLock(block: suspend () -> T): T =
-        MutexRegistry.lockFor(clientId, storeKey).withLock { block() }
+        lockProvider.lockFor(clientId, storeKey).withLock { block() }
+
+    private inline fun <T> storageResult(block: () -> T): Result<T, CredentialsManagerError> =
+        runCatching(block).fold(
+            onSuccess = { Result.Success(it) },
+            onFailure = { Result.Failure(CredentialsManagerError.StoreFailed(it)) },
+        )
 
     private suspend fun decodeStored(): Credentials? {
         val blob = storage.retrieve(storeKey) ?: return null
