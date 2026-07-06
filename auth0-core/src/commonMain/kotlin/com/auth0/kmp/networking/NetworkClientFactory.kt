@@ -7,6 +7,8 @@ import com.auth0.kmp.core.useragent.UserAgent
 import com.auth0.kmp.networking.transport.DefaultNetworkClient
 import com.auth0.kmp.networking.transport.EndpointResolver
 import com.auth0.kmp.networking.transport.buildHttpClient
+import com.auth0.kmp.networking.transport.httpEngineFactory
+import io.ktor.client.engine.HttpClientEngineFactory
 
 /**
  * Creates a [NetworkClient] for the given [account].
@@ -19,13 +21,19 @@ import com.auth0.kmp.networking.transport.buildHttpClient
 public fun networkClient(
     account: Auth0Account,
     userAgent: UserAgent = Auth0UserAgent.default(),
+): NetworkClient = networkClient(account, userAgent, httpEngineFactory())
+
+internal fun networkClient(
+    account: Auth0Account,
+    userAgent: UserAgent,
+    engineFactory: HttpClientEngineFactory<*>,
 ): NetworkClient {
     val configuration = account.configuration.copy(
         defaultHeaders = account.configuration.defaultHeaders +
-            (userAgent.headerName to userAgent.value),
+                (userAgent.headerName to userAgent.value),
     )
     return DefaultNetworkClient(
-        client = buildHttpClient(configuration),
+        client = buildHttpClient(configuration, engineFactory),
         resolver = EndpointResolver(account),
     )
 }
