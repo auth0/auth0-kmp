@@ -10,6 +10,8 @@ skie = "0.10.13"
 androidx-browser = "1.10.0"
 androidx-startup = "1.2.0"
 androidx-activity = "1.9.0"
+androidx-datastore = "1.1.7"
+tink-android = "1.18.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -27,6 +29,8 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 androidx-browser = { module = "androidx.browser:browser", version.ref = "androidx-browser" }
 androidx-startup-runtime = { module = "androidx.startup:startup-runtime", version.ref = "androidx-startup" }
 androidx-activity = { module = "androidx.activity:activity", version.ref = "androidx-activity" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "androidx-datastore" }
+tink-android = { module = "com.google.crypto.tink:tink-android", version.ref = "tink-android" }
 
 [plugins]
 androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
