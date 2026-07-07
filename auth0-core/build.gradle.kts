@@ -12,7 +12,8 @@ val generateVersionFile by tasks.registering {
     inputs.file(versionFile)
     outputs.dir(outputDir)
     doLast {
-        val version = versionFile.readLines().first().trim()
+        val version = versionFile.readLines().firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }
+            ?: error("Version file is empty or missing: ${versionFile.absolutePath}")
         val pkgDir = outputDir.get().dir("com/auth0/kmp/core").asFile
         pkgDir.mkdirs()
         pkgDir.resolve("Version.kt").writeText(
