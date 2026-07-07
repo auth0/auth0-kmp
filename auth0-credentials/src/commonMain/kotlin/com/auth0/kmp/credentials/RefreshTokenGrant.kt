@@ -11,6 +11,7 @@ internal class RefreshTokenGrant(
 ) : TokenGrant {
 
     override val parameters: Map<String, String> = buildMap {
+        putAll(extraParams)
         put("grant_type", "refresh_token")
         put("client_id", clientId)
         put("refresh_token", refreshToken)
@@ -20,6 +21,5 @@ internal class RefreshTokenGrant(
         audience?.let {
             put("audience", it)
         }
-        putAll(extraParams)
     }
 }

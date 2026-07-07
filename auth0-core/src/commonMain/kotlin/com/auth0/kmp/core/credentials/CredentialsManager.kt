@@ -12,8 +12,6 @@ public interface CredentialsManager {
     /**
      * Stores [credentials], replacing any previously stored credentials.
      *
-     * This method is Not thread-safe
-     *
      * @param credentials the credentials to persist.
      * @return [Result.Success] on success, or a [CredentialsManagerError] on
      *   a storage failure.
@@ -23,7 +21,6 @@ public interface CredentialsManager {
     /**
      * Removes any stored credentials.
      *
-     * This method is Not thread-safe
      */
     public suspend fun clearCredentials(): Result<Unit, CredentialsManagerError>
 
