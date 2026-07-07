@@ -70,8 +70,9 @@ final class AuthViewModel {
             domain: domain,
             configuration: configuration
         )
-        client = authenticationClient(account: account)
-        webClient = webAuthClient(account: account)
+        let userAgent = Auth0UserAgent.companion.default()
+        client = authenticationClient(account: account, userAgent: userAgent)
+        webClient = webAuthClient(account: account, userAgent: userAgent)
     }
 
     func login(email: String, password: String, realm: String) async {

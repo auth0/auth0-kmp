@@ -3,6 +3,7 @@ package com.auth0.kmp.networking.transport
 import com.auth0.kmp.core.NetworkingConfiguration
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
@@ -13,8 +14,11 @@ import io.ktor.client.plugins.logging.SIMPLE
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendIfNameAbsent
 
-internal fun buildHttpClient(config: NetworkingConfiguration): HttpClient =
-    HttpClient(httpEngineFactory()) { applyNetworkingConfig(config) }
+internal fun buildHttpClient(
+    config: NetworkingConfiguration,
+    engineFactory: HttpClientEngineFactory<*> = httpEngineFactory(),
+): HttpClient =
+    HttpClient(engineFactory) { applyNetworkingConfig(config) }
 
 internal fun HttpClientConfig<*>.applyNetworkingConfig(config: NetworkingConfiguration) {
     expectSuccess = false

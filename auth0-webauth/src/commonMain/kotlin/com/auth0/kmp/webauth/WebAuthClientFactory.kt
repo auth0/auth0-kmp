@@ -1,6 +1,8 @@
 package com.auth0.kmp.webauth
 
 import com.auth0.kmp.core.Auth0Account
+import com.auth0.kmp.core.useragent.Auth0UserAgent
+import com.auth0.kmp.core.useragent.UserAgent
 import com.auth0.kmp.core.validation.IdTokenClaimsValidator
 import com.auth0.kmp.networking.networkClient
 import com.auth0.kmp.networking.normalizedBaseUrl
@@ -14,10 +16,15 @@ import kotlin.time.Clock
  * Creates a [WebAuthClient] for the given [account].
  *
  * @param account the tenant/application coordinates the login is performed against.
+ * @param userAgent identifies the client library in the `Auth0-Client` header;
+ *   defaults to this SDK's identity.
  */
-public fun webAuthClient(account: Auth0Account): WebAuthClient {
+public fun webAuthClient(
+    account: Auth0Account,
+    userAgent: UserAgent = Auth0UserAgent.default(),
+): WebAuthClient {
     val clock = Clock.System
-    val networkClient = networkClient(account)
+    val networkClient = networkClient(account, userAgent)
     return DefaultWebAuthClient(
         account = account,
         browser = createBrowserAgent(),
