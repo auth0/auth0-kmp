@@ -2,8 +2,8 @@ package com.auth0.kmp.authentication.error
 
 import com.auth0.kmp.core.error.Auth0Error
 import com.auth0.kmp.core.error.TransportError
-import com.auth0.kmp.authentication.response.parseAuth0ErrorBody
-import com.auth0.kmp.authentication.validation.IdTokenValidationError
+import com.auth0.kmp.core.error.parseAuth0ErrorBody
+import com.auth0.kmp.core.validation.IdTokenValidationError
 
 /**
  * Failures surfaced by an authentication operation.

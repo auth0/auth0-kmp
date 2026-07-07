@@ -1,9 +1,10 @@
 package com.auth0.kmp.authentication
 
 import com.auth0.kmp.authentication.error.AuthenticationError
-import com.auth0.kmp.authentication.validation.IdTokenValidationError
-import com.auth0.kmp.authentication.validation.IdTokenValidator
 import com.auth0.kmp.core.error.TransportError
+import com.auth0.kmp.core.validation.IdTokenValidationContext
+import com.auth0.kmp.core.validation.IdTokenValidationError
+import com.auth0.kmp.core.validation.IdTokenValidator
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.request.HttpMethod
@@ -65,9 +66,14 @@ private class FakeIdTokenValidator(
     private val verdict: IdTokenValidationError?,
 ) : IdTokenValidator {
     var lastIdToken: String? = null
+    var lastContext: IdTokenValidationContext? = null
 
-    override fun validate(idToken: String): IdTokenValidationError? {
+    override fun validate(
+        idToken: String,
+        context: IdTokenValidationContext,
+    ): IdTokenValidationError? {
         lastIdToken = idToken
+        lastContext = context
         return verdict
     }
 }

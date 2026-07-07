@@ -24,7 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ChooseSignInScreen(onEmbeddedLogin: () -> Unit) {
+fun ChooseSignInScreen(onEmbeddedLogin: () -> Unit, onWebAuthLogin: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -55,8 +55,8 @@ fun ChooseSignInScreen(onEmbeddedLogin: () -> Unit) {
 
         OptionCard(
             title = "Web Auth",
-            description = "Hosted Universal Login — coming soon",
-            enabled = false,
+            description = "Hosted Universal Login in a secure browser tab",
+            onClick = onWebAuthLogin,
         )
     }
 }

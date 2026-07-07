@@ -1,7 +1,7 @@
 package com.auth0.kmp.authentication
 
-import com.auth0.kmp.authentication.validation.ClaimsIdTokenValidator
 import com.auth0.kmp.core.Auth0Account
+import com.auth0.kmp.core.validation.IdTokenClaimsValidator
 import com.auth0.kmp.networking.networkClient
 import com.auth0.kmp.networking.normalizedBaseUrl
 import kotlin.time.Clock
@@ -16,7 +16,7 @@ public fun authenticationClient(account: Auth0Account): AuthenticationClient {
     return DefaultAuthenticationClient(
         clientId = account.clientId,
         networkClient = networkClient(account),
-        idTokenValidator = ClaimsIdTokenValidator(
+        idTokenValidator = IdTokenClaimsValidator(
             issuer = normalizedBaseUrl(account),
             audience = account.clientId,
             clock = clock,

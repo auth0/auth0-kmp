@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      Theme for the SDK-internal WebAuthActivity. It is launched into its own
+      empty task (the SDK holds no caller Activity), so a translucent window with
+      the default starting/preview window would flash black before the browser
+      overlays. windowDisablePreview suppresses that preview window; the rest keep
+      the window fully transparent and animation-free.
+    -->
+    <style name="Auth0.WebAuth.Transparent" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+</resources>

@@ -116,8 +116,10 @@ struct EmbeddedLoginView: View {
     @ViewBuilder
     private var statusView: some View {
         // Success navigates away to the Welcome screen, so only failures render here.
-        if case .failure(let error) = viewModel.state {
-            Text(message(for: error))
+       // This screen only performs embedded (password-realm) login, so a failure is
+      // always an AuthenticationError; other Auth0Error kinds are ignored here.
+        if case .failure(let error) = viewModel.state, let authError = error as? AuthenticationError {
+            Text(message(for: authError))
                 .foregroundStyle(.red)
         }
     }

@@ -42,7 +42,10 @@ private struct AuthFlowView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ChooseSignInView(onEmbeddedLogin: { path.append(.embeddedLogin) })
+            ChooseSignInView(
+                onEmbeddedLogin: { path.append(.embeddedLogin) },
+                onWebAuthLogin: { Task { await viewModel.webLogin() } }
+            )
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .embeddedLogin:

@@ -15,7 +15,7 @@ final class AuthViewModel {
         case idle
         case loading
         case success(Credentials)
-        case failure(AuthenticationError)
+        case failure(any Auth0Error)
 
         static func == (lhs: State, rhs: State) -> Bool {
             switch (lhs, rhs) {
@@ -24,23 +24,35 @@ final class AuthViewModel {
                   case let (.success(l), .success(r)):
                       return l.isEqual(r)
                   case let (.failure(l), .failure(r)):
-                      return l.isEqual(r) 
+                return (l as? NSObjectProtocol)?.isEqual(r) ?? false
                   default:
                       return false
                   }
         }
     }
 
+    enum LoginMethod {
+        case embedded
+        case webAuth
+    }
+
     private(set) var state: State = .idle
+
+    // Tracks how the current session was established, so logout only performs the
+    // browser round-trip for Web Auth sessions (embedded login holds no SSO cookie).
+    private var loginMethod: LoginMethod?
 
     let isConfigured: Bool
 
     private let client: (any AuthenticationClient)?
+    
+    private let webClient: (any WebAuthClient)?
 
     init(domain: String, clientId: String) {
         isConfigured = !domain.isEmpty && !clientId.isEmpty
         guard isConfigured else {
             client = nil
+            webClient = nil
             return
         }
         // Kotlin default arguments do NOT cross into Swift, so every parameter
@@ -59,6 +71,7 @@ final class AuthViewModel {
             configuration: configuration
         )
         client = authenticationClient(account: account)
+        webClient = webAuthClient(account: account)
     }
 
     func login(email: String, password: String, realm: String) async {
@@ -78,6 +91,7 @@ final class AuthViewModel {
             switch onEnum(of: result) {
             case .success(let success):
                 if let credentials = success.data as? Credentials {
+                    loginMethod = .embedded
                     state = .success(credentials)
                 } else {
                     state = .idle
@@ -96,12 +110,81 @@ final class AuthViewModel {
             state = .idle
         }
     }
+    
+    
+    func webLogin() async {
+        guard let webClient else { return }
+        state = .loading
+        do {
+                     let result = try await webClient.login(
+                         options: LoginOptions(
+                             scope: "openid profile email offline_access",
+                             audience: nil,
+                             connection: nil,
+                             organization: nil,
+                             prompt: nil,
+                             maxAge: nil,
+                             redirectUri: nil,
+                             scheme: nil,
+                             ephemeral: false,
+                             extraParameters: [:]
+                         )
+                     )
+                     switch onEnum(of: result) {
+                     case .success(let success):
+                         if let credentials = success.data as? Credentials {
+                             loginMethod = .webAuth
+                             state = .success(credentials)
+                         } else {
+                             state = .idle
+                         }
+                     case .failure(let failure):
+                         if let error = failure.error as? WebAuthError {
+                             state = .failure(error)
+                         } else {
+                             state = .idle
+                         }
+                     }
+                 } catch {
+                     state = .idle
+                 }
+    }
 
     func logout() {
-        state = .idle
+        if loginMethod == .webAuth, let webClient {
+            // Keep the current .success state (credentials stay on screen) during
+            // the browser round-trip; only clear the view once logout succeeds.
+            Task {
+                do {
+                    let result = try await webClient.logout(
+                        options: LogoutOptions(
+                            returnTo: nil,
+                            scheme: nil,
+                            federated: false,
+                            extraParameters: [:]
+                        )
+                    )
+                    switch onEnum(of: result) {
+                    case .success:
+                        loginMethod = nil
+                        state = .idle
+                    // Logout did not complete: leave the user on the Welcome screen
+                    // since the session was not cleared.
+                    case .failure:
+                        break
+                    }
+                } catch {
+                    // Thrown error (e.g. cancellation): leave the view unchanged.
+                }
+            }
+        } else {
+            loginMethod = nil
+            state = .idle
+        }
     }
 
     deinit {
         client?.close()
+        webClient?.close()
     }
 }

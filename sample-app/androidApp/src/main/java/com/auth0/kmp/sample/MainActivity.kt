@@ -57,6 +57,7 @@ class MainActivity : ComponentActivity() {
                         composable<Chooser> {
                             ChooseSignInScreen(
                                 onEmbeddedLogin = { navController.navigate(EmbeddedLogin) },
+                                onWebAuthLogin = viewModel::webLogin,
                             )
                         }
                         composable<EmbeddedLogin> {

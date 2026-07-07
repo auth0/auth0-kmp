@@ -22,6 +22,7 @@ kotlin {
             isStatic = true
             export(project(":auth0-core"))
             export(project(":auth0-authentication"))
+            export(project(":auth0-webauth"))
         }
     }
 
@@ -39,6 +40,7 @@ kotlin {
         commonMain.dependencies {
             api(project(":auth0-core"))
             api(project(":auth0-authentication"))
+            api(project(":auth0-webauth"))
         }
     }
 }

@@ -3,10 +3,10 @@ package com.auth0.kmp.authentication
 import com.auth0.kmp.authentication.error.AuthenticationError
 import com.auth0.kmp.authentication.error.toAuthenticationError
 import com.auth0.kmp.authentication.request.LoginRequest
-import com.auth0.kmp.authentication.response.TokenResponse
-import com.auth0.kmp.authentication.response.toCredentials
-import com.auth0.kmp.authentication.validation.IdTokenValidator
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.token.TokenResponse
+import com.auth0.kmp.core.token.toCredentials
+import com.auth0.kmp.core.validation.IdTokenValidator
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.request.HttpMethod

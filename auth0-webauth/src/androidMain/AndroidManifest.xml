@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
+    <application>
+        <activity
+            android:name="com.auth0.kmp.webauth.browser.WebAuthActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@style/Auth0.WebAuth.Transparent" />
+
+        <activity
+            android:name="com.auth0.kmp.webauth.browser.RedirectActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="${auth0Domain}"
+                    android:pathPrefix="/android/${applicationId}/callback"
+                    android:scheme="${auth0Scheme}" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

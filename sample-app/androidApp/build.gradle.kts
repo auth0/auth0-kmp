@@ -29,6 +29,9 @@ android {
 
         buildConfigField("String", "AUTH0_DOMAIN", "\"${localProps.getProperty("auth0.domain", "")}\"")
         buildConfigField("String", "AUTH0_CLIENT_ID", "\"${localProps.getProperty("auth0.clientId", "")}\"")
+
+        manifestPlaceholders["auth0Scheme"] = applicationId as String
+        manifestPlaceholders["auth0Domain"] = localProps.getProperty("auth0.domain", "")
     }
 
     buildFeatures {

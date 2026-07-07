@@ -35,7 +35,6 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(projects.auth0Core)
-            implementation(projects.auth0Networking)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
         }

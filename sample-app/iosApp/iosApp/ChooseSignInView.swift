@@ -7,6 +7,7 @@ import SwiftUI
 
 struct ChooseSignInView: View {
     let onEmbeddedLogin: () -> Void
+    let onWebAuthLogin: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -28,9 +29,9 @@ struct ChooseSignInView: View {
 
             optionCard(
                 title: "Web Auth",
-                description: "Hosted Universal Login — coming soon",
-                enabled: false,
-                action: {}
+                description: "Hosted Universal Login in a secure browser tab",
+                enabled: true,
+                action: onWebAuthLogin
             )
             .padding(.top, Spacing.md)
 
