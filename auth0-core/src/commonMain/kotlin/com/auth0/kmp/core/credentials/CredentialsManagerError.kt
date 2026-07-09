@@ -62,4 +62,12 @@ public sealed interface CredentialsManagerError : Auth0Error {
      * @param cause the underlying deserialization failure, if any.
      */
     public data class DeserializationFailed(val cause: Throwable? = null) : CredentialsManagerError
+
+    /**
+     * A stored value could not be encrypted or decrypted, for example because the
+     * device key protecting it has been invalidated.
+     *
+     * @param cause the underlying cryptographic failure, if any.
+     */
+    public data class CryptoFailed(val cause: Throwable? = null) : CredentialsManagerError
 }

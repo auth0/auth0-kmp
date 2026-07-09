@@ -22,13 +22,14 @@ internal class DefaultCredentialsManager(
     override suspend fun saveCredentials(
         credentials: Credentials,
     ): Result<Unit, CredentialsManagerError> =
-        storageResult { storage.store(storeKey, CredentialsSerializer.encode(credentials)) }
+        storageCall { storage.store(storeKey, CredentialsSerializer.encode(credentials)) }
 
     override suspend fun clearCredentials(): Result<Unit, CredentialsManagerError> =
-        storageResult { storage.remove(storeKey) }
+        storageCall { storage.remove(storeKey) }
 
     override suspend fun hasValidCredentials(minTtl: Long): Boolean {
-        val stored = decodeStored() ?: return false
+        val blob = runCatching { storage.retrieve(storeKey) }.getOrNull() ?: return false
+        val stored = runCatching { CredentialsSerializer.decode(blob) }.getOrNull() ?: return false
         return !hasExpired(stored) && !willExpire(stored, minTtl)
     }
 
@@ -39,8 +40,16 @@ internal class DefaultCredentialsManager(
         headers: Map<String, String>,
         forceRefresh: Boolean,
     ): Result<Credentials, CredentialsManagerError> = withAccountLock {
-        val blob = storage.retrieve(storeKey)
-            ?: return@withAccountLock Result.Failure(CredentialsManagerError.NoCredentials)
+        val blob = when (val read = storageCall { storage.retrieve(storeKey) }) {
+            is Result.Success ->
+                read.data ?: return@withAccountLock Result.Failure(CredentialsManagerError.NoCredentials)
+            is Result.Failure -> {
+                // The blob can no longer be decrypted (e.g. the device key was
+                // invalidated); drop it so the next login starts clean.
+                if (read.error is CredentialsManagerError.CryptoFailed) storageCall { storage.remove(storeKey) }
+                return@withAccountLock read
+            }
+        }
 
         val stored = runCatching { CredentialsSerializer.decode(blob) }.getOrElse {
             return@withAccountLock Result.Failure(CredentialsManagerError.DeserializationFailed(it))
@@ -84,23 +93,25 @@ internal class DefaultCredentialsManager(
             )
         }
 
-        storageResult { storage.store(storeKey, CredentialsSerializer.encode(merged)) }
+        storageCall { storage.store(storeKey, CredentialsSerializer.encode(merged)) }
             .map { merged }
     }
 
     private suspend fun <T> withAccountLock(block: suspend () -> T): T =
         lockProvider.lockFor(clientId, storeKey).withLock { block() }
 
-    private inline fun <T> storageResult(block: () -> T): Result<T, CredentialsManagerError> =
-        runCatching(block).fold(
+    private suspend fun <T> storageCall(
+        block: suspend () -> T,
+    ): Result<T, CredentialsManagerError> =
+        runCatching { block() }.fold(
             onSuccess = { Result.Success(it) },
-            onFailure = { Result.Failure(CredentialsManagerError.StoreFailed(it)) },
+            onFailure = {
+                Result.Failure(
+                    if (it is StorageCryptoException) CredentialsManagerError.CryptoFailed(it)
+                    else CredentialsManagerError.StoreFailed(it),
+                )
+            },
         )
-
-    private suspend fun decodeStored(): Credentials? {
-        val blob = storage.retrieve(storeKey) ?: return null
-        return runCatching { CredentialsSerializer.decode(blob) }.getOrNull()
-    }
 
     private fun hasScopeChanged(storedScope: String?, requiredScope: String?): Boolean {
         if (requiredScope == null) return false

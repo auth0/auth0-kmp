@@ -8,6 +8,9 @@ import kotlinx.serialization.Serializable
 // AuthViewModel, not through navigation arguments.
 
 @Serializable
+object Splash
+
+@Serializable
 object Chooser
 
 @Serializable

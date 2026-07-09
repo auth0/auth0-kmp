@@ -310,4 +310,68 @@ class DefaultCredentialsManagerTest {
         assertIs<CredentialsManagerError.StoreFailed>(result.error)
         assertEquals(tokenClient.callCount, 1)
     }
+
+    // ---- crypto failure ----
+
+    @Test
+    fun get_maps_storage_crypto_throw_to_CryptoFailed() = runTest {
+        val storage = storageWith(credentials()).apply {
+            failRetrieveWith = StorageCryptoException("decrypt failed")
+        }
+
+        val result = manager(storage).getCredentials()
+
+        assertIs<Result.Failure<CredentialsManagerError>>(result)
+        assertIs<CredentialsManagerError.CryptoFailed>(result.error)
+    }
+
+    @Test
+    fun get_crypto_failure_auto_clears_stored_blob() = runTest {
+        val storage = storageWith(credentials()).apply {
+            failRetrieveWith = StorageCryptoException("decrypt failed")
+        }
+
+        manager(storage).getCredentials()
+
+        assertEquals(1, storage.removeCount)
+    }
+
+    @Test
+    fun get_maps_non_crypto_storage_throw_to_StoreFailed_without_clearing() = runTest {
+        val storage = storageWith(credentials()).apply {
+            failRetrieveWith = RuntimeException("io failed")
+        }
+
+        val result = manager(storage).getCredentials()
+
+        assertIs<Result.Failure<CredentialsManagerError>>(result)
+        assertIs<CredentialsManagerError.StoreFailed>(result.error)
+        assertEquals(0, storage.removeCount)
+    }
+
+    @Test
+    fun hasValid_false_when_retrieve_throws() = runTest {
+        val storage = storageWith(credentials(expiresAt = now + 3600.seconds)).apply {
+            failRetrieveWith = StorageCryptoException("decrypt failed")
+        }
+
+        assertEquals(false, manager(storage).hasValidCredentials())
+    }
+
+    @Test
+    fun get_store_crypto_after_renewal_maps_to_CryptoFailed_without_clearing() = runTest {
+        val stored = credentials(expiresAt = now - 10.seconds, refreshToken = "stored-rt")
+        val renewed = credentials(accessToken = "new-at", expiresAt = now + 3600.seconds)
+        val storage = storageWith(stored).apply {
+            failStoreWith = StorageCryptoException("encrypt failed")
+        }
+        val tokenClient = FakeTokenClient(Result.Success(renewed))
+
+        val result = manager(storage, tokenClient).getCredentials()
+
+        assertIs<Result.Failure<CredentialsManagerError>>(result)
+        assertIs<CredentialsManagerError.CryptoFailed>(result.error)
+        assertEquals(0, storage.removeCount)
+        assertEquals(1, tokenClient.callCount)
+    }
 }

@@ -28,3 +28,12 @@ public interface Storage {
      */
     public suspend fun remove(key: String)
 }
+
+/**
+ * Thrown by a [Storage] implementation when a value cannot be encrypted or
+ * decrypted — for example when the device key protecting it has been invalidated.
+ */
+public class StorageCryptoException(
+    message: String,
+    cause: Throwable? = null,
+) : Exception(message, cause)

@@ -23,6 +23,7 @@ kotlin {
             export(project(":auth0-core"))
             export(project(":auth0-authentication"))
             export(project(":auth0-webauth"))
+            export(project(":auth0-credentials"))
         }
     }
 
@@ -41,6 +42,7 @@ kotlin {
             api(project(":auth0-core"))
             api(project(":auth0-authentication"))
             api(project(":auth0-webauth"))
+            api(project(":auth0-credentials"))
         }
     }
 }

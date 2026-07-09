@@ -35,25 +35,30 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     val state by viewModel.state.collectAsState()
 
-                    // Navigation is driven by observing auth state, so the view model
-                    // stays free of any NavController reference. A successful login
-                    // pushes Welcome; logging out (state back to Idle) pops to Chooser.
+                    LaunchedEffect(Unit) {
+                        viewModel.restoreSession()
+                    }
+
                     LaunchedEffect(state) {
                         when (state) {
                             is LoginUiState.Success ->
                                 navController.navigate(Welcome) {
-                                    // State is retained across config changes, so this
-                                    // effect re-fires on rotation while already on
-                                    // Welcome; keep a single instance on the back stack.
+                                    popUpTo(navController.graph.id) { inclusive = true }
                                     launchSingleTop = true
                                 }
                             LoginUiState.Idle ->
-                                navController.popBackStack(Chooser, inclusive = false)
+                                navController.navigate(Chooser) {
+                                    popUpTo(navController.graph.id) { inclusive = true }
+                                    launchSingleTop = true
+                                }
                             else -> Unit
                         }
                     }
 
-                    NavHost(navController = navController, startDestination = Chooser) {
+                    NavHost(navController = navController, startDestination = Splash) {
+                        composable<Splash> {
+                            SplashScreen()
+                        }
                         composable<Chooser> {
                             ChooseSignInScreen(
                                 onEmbeddedLogin = { navController.navigate(EmbeddedLogin) },

@@ -15,15 +15,24 @@ internal class FakeStorage(
 ) : Storage {
     var failOnStore = false
     var failOnRemove = false
+    var failRetrieveWith: Throwable? = null
+    var failStoreWith: Throwable? = null
+    var removeCount = 0
+        private set
 
-    override suspend fun retrieve(key: String): String? = map[key]
+    override suspend fun retrieve(key: String): String? {
+        failRetrieveWith?.let { throw it }
+        return map[key]
+    }
 
     override suspend fun store(key: String, value: String) {
+        failStoreWith?.let { throw it }
         if (failOnStore) throw RuntimeException("store failed")
         map[key] = value
     }
 
     override suspend fun remove(key: String) {
+        removeCount++
         if (failOnRemove) throw RuntimeException("remove failed")
         map.remove(key)
     }
