@@ -67,6 +67,30 @@ private struct AuthFlowView: View {
                 break
             }
         }
+        // Cover the chooser with a splash while the Keychain check runs, so the
+        // logged-out screen never flashes before a saved session is restored.
+        .overlay {
+            if viewModel.state == .restoring {
+                SplashView()
+            }
+        }
+        // Fires once when the view appears: checks the Keychain for a saved
+        // session. restoreSession() resolves .restoring to either .success
+        // (→ welcome) or .idle (→ chooser).
+        .task {
+            await viewModel.restoreSession()
+        }
+    }
+}
+
+/// Full-screen splash shown while the app checks storage for a saved session.
+private struct SplashView: View {
+    var body: some View {
+        ZStack {
+            Color(.systemBackground)
+                .ignoresSafeArea()
+            ProgressView()
+        }
     }
 }
 
