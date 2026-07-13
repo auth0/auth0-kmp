@@ -7,9 +7,11 @@ package com.auth0.kmp.core
  * @param domain your Auth0 tenant domain, e.g. `your-tenant.us.auth0.com`.
  * @param configuration the network transport settings shared by every client
  *   created for this account.
+ * @param useDPoP opt in to sender-constrained (DPoP) tokens for this account.
  */
 class Auth0Account(
     val clientId: String,
     val domain: String,
     val configuration: NetworkingConfiguration = NetworkingConfiguration(),
+    val useDPoP: Boolean = false,
 )

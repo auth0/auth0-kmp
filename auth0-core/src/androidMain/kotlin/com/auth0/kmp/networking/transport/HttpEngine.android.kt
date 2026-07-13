@@ -1,6 +1,11 @@
 package com.auth0.kmp.networking.transport
 
 import io.ktor.client.engine.HttpClientEngineFactory
+import io.ktor.client.engine.config
 import io.ktor.client.engine.okhttp.OkHttp
 
-internal actual fun httpEngineFactory(): HttpClientEngineFactory<*> = OkHttp
+internal actual fun httpEngineFactory(): HttpClientEngineFactory<*> = OkHttp.config {
+    config {
+        retryOnConnectionFailure(false)
+    }
+}

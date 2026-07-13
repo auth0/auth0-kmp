@@ -1,5 +1,6 @@
 package com.auth0.kmp.webauth.error
 
+import com.auth0.kmp.core.dpop.DPoPError
 import com.auth0.kmp.core.error.Auth0Error
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.error.parseAuth0ErrorBody
@@ -73,6 +74,14 @@ public sealed interface WebAuthError : Auth0Error {
      * @param cause the validation check that failed.
      */
     public data class IdTokenValidation(val cause: IdTokenValidationError) : WebAuthError
+
+    /**
+     * The login could not be bound to the account's DPoP keypair, so no
+     * authorization request was made.
+     *
+     * @param cause the underlying DPoP failure.
+     */
+    public data class DPoP(val cause: DPoPError) : WebAuthError
 }
 
 
@@ -87,3 +96,5 @@ internal fun TransportError.toWebAuthError(): WebAuthError = when (this) {
     is TransportError.Serialization,
     is TransportError.Unknown -> WebAuthError.Unknown(this)
 }
+
+internal fun DPoPError.toWebAuthError(): WebAuthError = WebAuthError.DPoP(this)

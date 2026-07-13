@@ -1,6 +1,9 @@
 package com.auth0.kmp.webauth
 
 import com.auth0.kmp.core.Auth0Account
+import com.auth0.kmp.core.annotation.InternalAuth0Api
+import com.auth0.kmp.core.dpop.DPoPRegistry
+import com.auth0.kmp.core.token.tokenClient
 import com.auth0.kmp.core.useragent.Auth0UserAgent
 import com.auth0.kmp.core.useragent.UserAgent
 import com.auth0.kmp.core.validation.IdTokenClaimsValidator
@@ -19,16 +22,19 @@ import kotlin.time.Clock
  * @param userAgent identifies the client library in the `Auth0-Client` header;
  *   defaults to this SDK's identity.
  */
+@OptIn(InternalAuth0Api::class)
 public fun webAuthClient(
     account: Auth0Account,
     userAgent: UserAgent = Auth0UserAgent.default(),
 ): WebAuthClient {
     val clock = Clock.System
     val networkClient = networkClient(account, userAgent)
+    val collaborators = if (account.useDPoP) DPoPRegistry.Default.collaboratorsFor(account) else null
     return DefaultWebAuthClient(
         account = account,
         browser = createBrowserAgent(),
         store = InMemoryTransactionStore(),
+        tokenClient = tokenClient(networkClient, clock),
         networkClient = networkClient,
         signatureValidator = Rs256IdTokenSignatureValidator(DefaultJwksProvider(networkClient)),
         claimsValidator = IdTokenClaimsValidator(
@@ -36,6 +42,7 @@ public fun webAuthClient(
             audience = account.clientId,
             clock = clock,
         ),
-        clock = clock,
+        proofGenerator = collaborators?.proofGenerator,
+        keygenLock = collaborators?.keygenLock,
     )
 }

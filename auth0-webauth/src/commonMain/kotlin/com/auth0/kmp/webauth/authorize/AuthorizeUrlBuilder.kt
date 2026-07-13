@@ -11,6 +11,7 @@ internal fun buildAuthorizeUrl(
     account: Auth0Account,
     transaction: AuthorizeTransaction,
     options: LoginOptions,
+    dpopJkt: String? = null,
 ): String =
     URLBuilder(normalizedBaseUrl(account)).apply {
         appendPathSegments("authorize")
@@ -29,5 +30,6 @@ internal fun buildAuthorizeUrl(
             options.prompt?.let { append("prompt", it) }
             options.maxAge?.let { append("max_age", it.toString()) }
             options.extraParameters.forEach { (key, value) -> append(key, value) }
+            dpopJkt?.let { append("dpop_jkt", it) }
         }
     }.buildString()

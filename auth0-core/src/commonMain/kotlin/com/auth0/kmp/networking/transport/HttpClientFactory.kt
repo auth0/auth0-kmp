@@ -1,6 +1,7 @@
 package com.auth0.kmp.networking.transport
 
 import com.auth0.kmp.core.NetworkingConfiguration
+import com.auth0.kmp.core.dpop.DPoPCollaborators
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngineFactory
@@ -17,10 +18,14 @@ import io.ktor.util.appendIfNameAbsent
 internal fun buildHttpClient(
     config: NetworkingConfiguration,
     engineFactory: HttpClientEngineFactory<*> = httpEngineFactory(),
+    dpopCollaborators: DPoPCollaborators? = null,
 ): HttpClient =
-    HttpClient(engineFactory) { applyNetworkingConfig(config) }
+    HttpClient(engineFactory) { applyNetworkingConfig(config, dpopCollaborators) }
 
-internal fun HttpClientConfig<*>.applyNetworkingConfig(config: NetworkingConfiguration) {
+internal fun HttpClientConfig<*>.applyNetworkingConfig(
+    config: NetworkingConfiguration,
+    dpopCollaborators: DPoPCollaborators? = null,
+) {
     expectSuccess = false
 
     install(HttpTimeout) {
@@ -42,6 +47,14 @@ internal fun HttpClientConfig<*>.applyNetworkingConfig(config: NetworkingConfigu
     defaultRequest {
         config.defaultHeaders.forEach { (key, value) ->
             headers.appendIfNameAbsent(key, value)
+        }
+    }
+
+    dpopCollaborators?.let { collaborators ->
+        install(DPoPPlugin) {
+            proofGenerator = collaborators.proofGenerator
+            nonceStore = collaborators.nonceStore
+            keygenLock = collaborators.keygenLock
         }
     }
 }

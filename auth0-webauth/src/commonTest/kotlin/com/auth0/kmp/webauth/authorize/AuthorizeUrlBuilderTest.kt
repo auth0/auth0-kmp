@@ -87,4 +87,16 @@ class AuthorizeUrlBuilderTest {
         assertContains(url, "ui_locales=en")
         assertContains(url, "login_hint=a%40b.com")
     }
+
+    @Test
+    fun appends_dpop_jkt_when_provided() {
+        val url = buildAuthorizeUrl(account, transaction(), LoginOptions(), dpopJkt = "the-thumbprint")
+        assertContains(url, "dpop_jkt=the-thumbprint")
+    }
+
+    @Test
+    fun omits_dpop_jkt_when_not_provided() {
+        val url = buildAuthorizeUrl(account, transaction(), LoginOptions())
+        assertTrue(!url.contains("dpop_jkt="), "url: $url")
+    }
 }
