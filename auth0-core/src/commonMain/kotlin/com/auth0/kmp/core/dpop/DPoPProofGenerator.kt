@@ -16,9 +16,9 @@ import kotlin.uuid.Uuid
  * Builds DPoP proof JWTs (RFC 9449) from the DPoP keypair.
  *
  * The generator holds no state of its own; a single instance is meant to be reused for the
- * lifetime of an account. The create-if-absent keypair path ([jkt], [generate], and
- * [shouldGenerateProof] on a token exchange) is not safe against concurrent first-time calls
- * on the same account and must be serialized by the caller.
+ * lifetime of an account. The create-if-absent keypair path ([jkt] and [generate]) is not safe
+ * against concurrent first-time calls on the same account and must be serialized by the caller;
+ * [shouldGenerateProof] only inspects the store and is safe to call unsynchronized.
  */
 @InternalAuth0Api
 public class DPoPProofGenerator(

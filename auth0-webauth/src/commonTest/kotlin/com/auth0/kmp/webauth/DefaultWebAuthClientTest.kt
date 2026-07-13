@@ -2,6 +2,9 @@ package com.auth0.kmp.webauth
 
 import com.auth0.kmp.core.Auth0Account
 import com.auth0.kmp.core.annotation.InternalAuth0Api
+import com.auth0.kmp.core.dpop.DPoPJwk
+import com.auth0.kmp.core.dpop.DPoPKeyStore
+import com.auth0.kmp.core.dpop.DPoPProofGenerator
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
@@ -21,6 +24,7 @@ import com.auth0.kmp.webauth.transaction.InMemoryTransactionStore
 import com.auth0.kmp.webauth.transaction.TransactionStore
 import com.auth0.kmp.webauth.validation.IdTokenSignatureValidator
 import io.ktor.http.Url
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -129,6 +133,17 @@ private class FakeClaimsValidator(
     }
 }
 
+/** A minimal DPoP key store: a fixed JWK, or a throwing [publicJwk] to exercise the jkt-failure path. */
+private class FakeKeyStore(private val failJwk: Boolean = false) : DPoPKeyStore {
+    override fun hasKey(): Boolean = true
+    override fun publicJwk(): DPoPJwk {
+        if (failJwk) throw RuntimeException("keystore boom") // → DPoPError.Unknown
+        return DPoPJwk(x = "x", y = "y")
+    }
+    override fun sign(data: ByteArray): ByteArray = ByteArray(64)
+    override fun clear() {}
+}
+
 private class Fixture(
     val client: DefaultWebAuthClient,
     val browser: FakeBrowserAgent,
@@ -146,6 +161,8 @@ private fun fixture(
     signatureVerdict: IdTokenValidationError? = null,
     claimsVerdict: IdTokenValidationError? = null,
     store: TransactionStore = InMemoryTransactionStore(),
+    proofGenerator: DPoPProofGenerator? = null,
+    keygenLock: Mutex? = null,
 ): Fixture {
     val tokenClient = FakeTokenClient(tokenOutcome)
     val network = FakeNetworkClient()
@@ -159,6 +176,8 @@ private fun fixture(
         networkClient = network,
         signatureValidator = signature,
         claimsValidator = claims,
+        proofGenerator = proofGenerator,
+        keygenLock = keygenLock,
     )
     return Fixture(client, browser, tokenClient, network, signature, claims, store)
 }
@@ -458,5 +477,28 @@ class DefaultWebAuthClientTest {
         )
         assertNull(f.claims.lastIdToken)              // proves claims validator never ran
         assertEquals(ID_TOKEN, f.signature.lastIdToken) // proves signature saw the token
+    }
+
+    @OptIn(InternalAuth0Api::class)
+    @Test
+    fun login_withDPoP_appendsDpopJktToAuthorizeUrl() = runTest {
+        val f = fixture(proofGenerator = DPoPProofGenerator(FakeKeyStore()), keygenLock = Mutex())
+        val result = f.client.login()
+        assertTrue(result is Result.Success)
+        val jkt = DPoPJwk(x = "x", y = "y").thumbprint()
+        assertTrue(f.browser.launchedUrl!!.contains("dpop_jkt=$jkt"), f.browser.launchedUrl!!)
+    }
+
+    @OptIn(InternalAuth0Api::class)
+    @Test
+    fun login_dpopJktFailure_failsDPoP_doesNotLaunch_clearsTransaction() = runTest {
+        val f = fixture(
+            proofGenerator = DPoPProofGenerator(FakeKeyStore(failJwk = true)),
+            keygenLock = Mutex(),
+        )
+        val result = f.client.login()
+        assertTrue(result is Result.Failure && result.error is WebAuthError.DPoP)
+        assertNull(f.browser.launchedUrl)            // browser never launched
+        assertFalse(f.store.hasActiveTransaction())  // transaction cleared
     }
 }

@@ -6,7 +6,11 @@ import com.auth0.kmp.core.dpop.DPoPCollaborators
 import com.auth0.kmp.core.dpop.DPoPNonceStore
 import com.auth0.kmp.core.dpop.DPoPProofGenerator
 import com.auth0.kmp.core.dpop.FakeDPoPKeyStore
+import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.primitives.decodeBase64Url
+import com.auth0.kmp.core.result.Result
+import com.auth0.kmp.networking.request.HttpMethod as NetHttpMethod
+import com.auth0.kmp.networking.request.NetworkRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockEngineConfig
@@ -194,5 +198,60 @@ class DPoPPluginTest {
             "nonce-1",
             payloadOf(engine.requestHistory[1].headers["DPoP"]!!)["nonce"]!!.jsonPrimitive.content,
         )
+    }
+
+    // The plugin reads the 400 body to check for a use_dpop_nonce challenge. This asserts that
+    // read does not consume the body: safeCall must still see the same payload and map it to a
+    // structured Server error (Ktor caches non-streaming bodies, so there is no double-receive).
+    @Test
+    fun non_nonce_400_body_survives_plugin_read_for_safeCall() = runTest {
+        val (collaborators, _) = collaborators()
+        val engine = sequentialEngine({
+            respond(
+                """{"error":"invalid_grant","error_description":"bad"}""",
+                HttpStatusCode.BadRequest,
+            )
+        })
+        val client = clientWith(collaborators, engine)
+
+        val result = safeCall(
+            client,
+            tokenUrl,
+            NetworkRequest(
+                method = NetHttpMethod.POST,
+                path = "/oauth/token",
+                body = """{"grant_type":"authorization_code"}""",
+            ),
+        ) { it }
+
+        assertEquals(
+            Result.Failure(
+                TransportError.Server(400, """{"error":"invalid_grant","error_description":"bad"}"""),
+            ),
+            result,
+        )
+        assertEquals(1, engine.requestHistory.size)
+    }
+
+    // Production sends the token body via setBody(String)+contentType(Json) through safeCall, not
+    // a hand-built TextContent. This drives that real path to prove grant_type is still parsed and
+    // a proof attached (guards against the plugin only recognizing hand-fed TextContent bodies).
+    @Test
+    fun attaches_dpop_header_via_production_setBodyString_path() = runTest {
+        val (collaborators, _) = collaborators()
+        val engine = sequentialEngine({ respond("{}", HttpStatusCode.OK) })
+        val client = clientWith(collaborators, engine)
+
+        safeCall(
+            client,
+            tokenUrl,
+            NetworkRequest(
+                method = NetHttpMethod.POST,
+                path = "/oauth/token",
+                body = """{"grant_type":"authorization_code"}""",
+            ),
+        ) { it }
+
+        assertNotNull(engine.requestHistory.single().headers["DPoP"])
     }
 }
