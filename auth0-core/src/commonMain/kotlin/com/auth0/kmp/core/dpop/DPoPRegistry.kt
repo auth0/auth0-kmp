@@ -49,13 +49,13 @@ public class DPoPRegistry {
         while (true) {
             val current = slots.load()
             current[key]?.let { return it }
-            val created = buildCollaborators(account)
+            val created = buildCollaborators(key)
             if (slots.compareAndSet(current, current + (key to created))) return created
         }
     }
 
-    private fun buildCollaborators(account: Auth0Account): DPoPCollaborators {
-        val keyStore = createDPoPKeyStore("$KEY_TAG_PREFIX${account.clientId}")
+    private fun buildCollaborators(accountKey: String): DPoPCollaborators {
+        val keyStore = createDPoPKeyStore("$KEY_TAG_PREFIX$accountKey")
         return DPoPCollaborators(
             proofGenerator = DPoPProofGenerator(keyStore),
             nonceStore = DPoPNonceStore(),

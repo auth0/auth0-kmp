@@ -68,8 +68,9 @@ internal val DPoPPlugin = createClientPlugin("DPoPPlugin", ::DPoPPluginConfig) {
         call.captureNonce(nonceStore)
 
         if (call.isNonceChallenge()) {
-            val retryProof =
+            val retryProof = keygenLock.withLock {
                 proofGenerator.generate(url, method, nonceStore.current(), accessToken).getOrNull()
+            }
             if (retryProof != null) {
                 request.setDPoP(retryProof)
                 call = proceed(request)
@@ -82,6 +83,11 @@ internal val DPoPPlugin = createClientPlugin("DPoPPlugin", ::DPoPPluginConfig) {
 
 private fun HttpRequestBuilder.grantType(): String? =
     runCatching {
+        // By the Send phase our token requests (setBody(String) + ContentType.Application.Json via
+        // safeCall) have been rendered to a TextContent, so we read grant_type off its text. If a
+        // Ktor upgrade ever defers that rendering, this cast returns null and no proof is attached —
+        // the production-path test (attaches_dpop_header_via_production_setBodyString_path) is what
+        // would catch that regression.
         val text = (body as? TextContent)?.text ?: return null
         json.parseToJsonElement(text).jsonObject["grant_type"]?.jsonPrimitive?.content
     }.getOrNull()
