@@ -2,6 +2,8 @@ package com.auth0.kmp.networking
 
 import com.auth0.kmp.core.Auth0Account
 import com.auth0.kmp.core.annotation.InternalAuth0Api
+import com.auth0.kmp.core.dpop.DPoPCollaborators
+import com.auth0.kmp.core.dpop.DPoPRegistry
 import com.auth0.kmp.core.useragent.Auth0UserAgent
 import com.auth0.kmp.core.useragent.UserAgent
 import com.auth0.kmp.networking.transport.DefaultNetworkClient
@@ -23,6 +25,7 @@ public fun networkClient(
     userAgent: UserAgent = Auth0UserAgent.default(),
 ): NetworkClient = networkClient(account, userAgent, httpEngineFactory())
 
+@OptIn(InternalAuth0Api::class)
 internal fun networkClient(
     account: Auth0Account,
     userAgent: UserAgent,
@@ -32,8 +35,10 @@ internal fun networkClient(
         defaultHeaders = account.configuration.defaultHeaders +
                 (userAgent.headerName to userAgent.value),
     )
+    val dpopCollaborators: DPoPCollaborators? =
+        if (account.useDPoP) DPoPRegistry.Default.collaboratorsFor(account) else null
     return DefaultNetworkClient(
-        client = buildHttpClient(configuration, engineFactory),
+        client = buildHttpClient(configuration, engineFactory, dpopCollaborators),
         resolver = EndpointResolver(account),
     )
 }

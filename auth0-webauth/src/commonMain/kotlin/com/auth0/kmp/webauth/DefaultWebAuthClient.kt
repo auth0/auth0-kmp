@@ -1,38 +1,40 @@
 package com.auth0.kmp.webauth
 
 import com.auth0.kmp.core.Auth0Account
-import com.auth0.kmp.core.token.TokenResponse
-import com.auth0.kmp.core.token.toCredentials
+import com.auth0.kmp.core.annotation.InternalAuth0Api
+import com.auth0.kmp.core.dpop.DPoPProofGenerator
+import com.auth0.kmp.core.token.TokenClient
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.validation.IdTokenValidationContext
 import com.auth0.kmp.core.validation.IdTokenValidator
 import com.auth0.kmp.networking.NetworkClient
-import com.auth0.kmp.networking.request.HttpMethod
-import com.auth0.kmp.networking.request.NetworkRequest
-import com.auth0.kmp.networking.transport.json
 import com.auth0.kmp.webauth.authorize.buildAuthorizeUrl
 import com.auth0.kmp.webauth.authorize.buildLogoutUrl
 import com.auth0.kmp.webauth.browser.BrowserAgent
 import com.auth0.kmp.webauth.error.WebAuthError
 import com.auth0.kmp.webauth.error.toWebAuthError
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.auth0.kmp.webauth.internal.randomUrlSafeString
 import com.auth0.kmp.webauth.pkce.Pkce
-import com.auth0.kmp.webauth.request.CodeExchangeRequest
+import com.auth0.kmp.webauth.request.CodeExchangeGrant
 import com.auth0.kmp.webauth.transaction.AuthorizeTransaction
 import com.auth0.kmp.webauth.transaction.TransactionStore
 import com.auth0.kmp.webauth.validation.IdTokenSignatureValidator
 import io.ktor.http.Url
-import kotlin.time.Clock
 
+@OptIn(InternalAuth0Api::class)
 internal class DefaultWebAuthClient(
     private val account: Auth0Account,
     private val browser: BrowserAgent,
     private val store: TransactionStore,
+    private val tokenClient: TokenClient,
     private val networkClient: NetworkClient,
     private val signatureValidator: IdTokenSignatureValidator,
     private val claimsValidator: IdTokenValidator,
-    private val clock: Clock,
+    private val proofGenerator: DPoPProofGenerator? = null,
+    private val keygenLock: Mutex? = null,
 ) : WebAuthClient {
 
     override suspend fun login(options: LoginOptions): Result<Credentials, WebAuthError> {
@@ -50,7 +52,19 @@ internal class DefaultWebAuthClient(
         )
         store.save(transaction)
 
-        val authorizeUrl = buildAuthorizeUrl(account, transaction, options)
+        val dpopJkt: String? = if (proofGenerator != null && keygenLock != null) {
+            when (val jkt = keygenLock.withLock { proofGenerator.jkt() }) {
+                is Result.Success -> jkt.data
+                is Result.Failure -> {
+                    store.clear(transaction.state)
+                    return Result.Failure(jkt.error.toWebAuthError())
+                }
+            }
+        } else {
+            null
+        }
+
+        val authorizeUrl = buildAuthorizeUrl(account, transaction, options, dpopJkt)
 
         return when (val launch = browser.launch(authorizeUrl, callbackScheme, options.ephemeral)) {
             is Result.Failure -> {
@@ -95,24 +109,16 @@ internal class DefaultWebAuthClient(
         val code = params["code"]
             ?: return Result.Failure(WebAuthError.BrowserError("Redirect did not contain an authorization code"))
 
-        val body = CodeExchangeRequest(
+        val grant = CodeExchangeGrant(
             code = code,
             codeVerifier = transaction.pkce.codeVerifier,
             redirectUri = transaction.redirectUri,
             clientId = account.clientId,
         )
-        val request = NetworkRequest(
-            method = HttpMethod.POST,
-            path = "/oauth/token",
-            body = json.encodeToString(body),
-        )
 
-        return when (val result = networkClient.request(request) { json.decodeFromString<TokenResponse>(it) }) {
+        return when (val result = tokenClient.fetchToken(grant)) {
             is Result.Failure -> Result.Failure(result.error.toWebAuthError())
-            is Result.Success -> {
-                val credentials = result.data.toCredentials(clock)
-                validate(credentials, transaction, options)
-            }
+            is Result.Success -> validate(result.data, transaction, options)
         }
     }
 

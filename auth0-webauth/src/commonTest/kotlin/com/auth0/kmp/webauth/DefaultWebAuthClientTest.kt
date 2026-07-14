@@ -1,8 +1,15 @@
 package com.auth0.kmp.webauth
 
 import com.auth0.kmp.core.Auth0Account
+import com.auth0.kmp.core.annotation.InternalAuth0Api
+import com.auth0.kmp.core.dpop.DPoPJwk
+import com.auth0.kmp.core.dpop.DPoPKeyStore
+import com.auth0.kmp.core.dpop.DPoPProofGenerator
 import com.auth0.kmp.core.error.TransportError
+import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
+import com.auth0.kmp.core.token.TokenClient
+import com.auth0.kmp.core.token.TokenGrant
 import com.auth0.kmp.core.validation.IdTokenValidationContext
 import com.auth0.kmp.core.validation.IdTokenValidationError
 import com.auth0.kmp.core.validation.IdTokenValidator
@@ -17,21 +24,28 @@ import com.auth0.kmp.webauth.transaction.InMemoryTransactionStore
 import com.auth0.kmp.webauth.transaction.TransactionStore
 import com.auth0.kmp.webauth.validation.IdTokenSignatureValidator
 import io.ktor.http.Url
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.time.Clock
 import kotlin.time.Instant
 
 private const val ID_TOKEN = "header.payload.signature"
 private const val REDIRECT_URI = "myapp://test.auth0.com/android/com.example/callback"
 private const val RETURN_TO = "myapp://test.auth0.com/android/com.example/callback"
 
-private fun tokenJson(idToken: String = ID_TOKEN): String =
-    """{"access_token":"access-abc","id_token":"$idToken","token_type":"Bearer","expires_in":3600,"refresh_token":"refresh-xyz","scope":"openid profile email offline_access"}"""
+private fun credentials(idToken: String = ID_TOKEN): Credentials =
+    Credentials(
+        accessToken = "access-abc",
+        idToken = idToken,
+        tokenType = "Bearer",
+        expiresAt = Instant.fromEpochSeconds(1_000 + 3600),
+        refreshToken = "refresh-xyz",
+        scope = "openid profile email offline_access",
+    )
 
 /** Builds a success redirect that echoes the transaction's state (parsed from the authorize URL). */
 private fun redirectSuccess(code: String = "the-code"): (String) -> Result<String, WebAuthError> =
@@ -65,10 +79,24 @@ private class FakeBrowserAgent(
     }
 }
 
-private class FakeNetworkClient(
-    private val outcome: Result<String, TransportError>,
-) : NetworkClient {
-    var lastRequest: NetworkRequest? = null
+@OptIn(InternalAuth0Api::class)
+private class FakeTokenClient(
+    private val outcome: Result<Credentials, TransportError>,
+) : TokenClient {
+    var lastGrant: TokenGrant? = null
+
+    override suspend fun fetchToken(
+        grant: TokenGrant,
+        headers: Map<String, String>,
+    ): Result<Credentials, TransportError> {
+        lastGrant = grant
+        return outcome
+    }
+
+    override fun close() {}
+}
+
+private class FakeNetworkClient : NetworkClient {
     var closed = false
         private set
 
@@ -76,13 +104,7 @@ private class FakeNetworkClient(
         request: NetworkRequest,
         retryPolicy: RetryPolicy,
         deserialize: (String) -> T,
-    ): Result<T, TransportError> {
-        lastRequest = request
-        return when (outcome) {
-            is Result.Success -> Result.Success(deserialize(outcome.data))
-            is Result.Failure -> outcome
-        }
-    }
+    ): Result<T, TransportError> = error("not used in these tests")
 
     override fun close() {
         closed = true
@@ -111,39 +133,53 @@ private class FakeClaimsValidator(
     }
 }
 
-private class FixedClock(private val at: Instant) : Clock {
-    override fun now(): Instant = at
+/** A minimal DPoP key store: a fixed JWK, or a throwing [publicJwk] to exercise the jkt-failure path. */
+private class FakeKeyStore(private val failJwk: Boolean = false) : DPoPKeyStore {
+    override fun hasKey(): Boolean = true
+    override fun publicJwk(): DPoPJwk {
+        if (failJwk) throw RuntimeException("keystore boom") // → DPoPError.Unknown
+        return DPoPJwk(x = "x", y = "y")
+    }
+    override fun sign(data: ByteArray): ByteArray = ByteArray(64)
+    override fun clear() {}
 }
 
 private class Fixture(
     val client: DefaultWebAuthClient,
     val browser: FakeBrowserAgent,
+    val tokenClient: FakeTokenClient,
     val network: FakeNetworkClient,
     val signature: FakeSignatureValidator,
     val claims: FakeClaimsValidator,
     val store: TransactionStore,
 )
 
+@OptIn(InternalAuth0Api::class)
 private fun fixture(
     browser: FakeBrowserAgent = FakeBrowserAgent(),
-    networkOutcome: Result<String, TransportError> = Result.Success(tokenJson()),
+    tokenOutcome: Result<Credentials, TransportError> = Result.Success(credentials()),
     signatureVerdict: IdTokenValidationError? = null,
     claimsVerdict: IdTokenValidationError? = null,
     store: TransactionStore = InMemoryTransactionStore(),
+    proofGenerator: DPoPProofGenerator? = null,
+    keygenLock: Mutex? = null,
 ): Fixture {
-    val network = FakeNetworkClient(networkOutcome)
+    val tokenClient = FakeTokenClient(tokenOutcome)
+    val network = FakeNetworkClient()
     val signature = FakeSignatureValidator(signatureVerdict)
     val claims = FakeClaimsValidator(claimsVerdict)
     val client = DefaultWebAuthClient(
         account = Auth0Account(clientId = "cid", domain = "test.auth0.com"),
         browser = browser,
         store = store,
+        tokenClient = tokenClient,
         networkClient = network,
         signatureValidator = signature,
         claimsValidator = claims,
-        clock = FixedClock(Instant.fromEpochSeconds(1_000)),
+        proofGenerator = proofGenerator,
+        keygenLock = keygenLock,
     )
-    return Fixture(client, browser, network, signature, claims, store)
+    return Fixture(client, browser, tokenClient, network, signature, claims, store)
 }
 
 class DefaultWebAuthClientTest {
@@ -256,18 +292,31 @@ class DefaultWebAuthClientTest {
 
     @Test
     fun codeExchangeNetworkFailure_mapsToWebAuthErrorNetwork() = runTest {
-        val f = fixture(networkOutcome = Result.Failure(TransportError.NoInternet))
+        val f = fixture(tokenOutcome = Result.Failure(TransportError.NoInternet))
         assertEquals(Result.Failure(WebAuthError.Network(TransportError.NoInternet)), f.client.login())
     }
 
     @Test
     fun codeExchangeServerError_mapsToApiError() = runTest {
         val server = TransportError.Server(403, """{"error":"invalid_grant","error_description":"bad"}""")
-        val f = fixture(networkOutcome = Result.Failure(server))
+        val f = fixture(tokenOutcome = Result.Failure(server))
         assertEquals(
             Result.Failure(WebAuthError.ApiError("invalid_grant", "bad", 403)),
             f.client.login(),
         )
+    }
+
+    @Test
+    fun codeExchange_buildsAuthorizationCodeGrant() = runTest {
+        val f = fixture()
+        f.client.login()
+        val params = f.tokenClient.lastGrant!!.parameters
+        assertEquals("authorization_code", params["grant_type"])
+        assertEquals("cid", params["client_id"])
+        assertEquals("the-code", params["code"])
+        assertEquals(REDIRECT_URI, params["redirect_uri"])
+        // code_verifier comes from the transaction's freshly generated PKCE
+        assertTrue(!params["code_verifier"].isNullOrBlank(), "code_verifier missing")
     }
 
     @Test
@@ -386,10 +435,10 @@ class DefaultWebAuthClientTest {
     }
 
     @Test
-    fun logout_doesNotTouchNetworkClient() = runTest {
+    fun logout_doesNotExchangeTokens() = runTest {
         val f = fixture(browser = FakeBrowserAgent(onLaunch = { Result.Success(RETURN_TO) }))
         f.client.logout()
-        assertNull(f.network.lastRequest)
+        assertNull(f.tokenClient.lastGrant)
     }
 
     @Test
@@ -428,5 +477,28 @@ class DefaultWebAuthClientTest {
         )
         assertNull(f.claims.lastIdToken)              // proves claims validator never ran
         assertEquals(ID_TOKEN, f.signature.lastIdToken) // proves signature saw the token
+    }
+
+    @OptIn(InternalAuth0Api::class)
+    @Test
+    fun login_withDPoP_appendsDpopJktToAuthorizeUrl() = runTest {
+        val f = fixture(proofGenerator = DPoPProofGenerator(FakeKeyStore()), keygenLock = Mutex())
+        val result = f.client.login()
+        assertTrue(result is Result.Success)
+        val jkt = DPoPJwk(x = "x", y = "y").thumbprint()
+        assertTrue(f.browser.launchedUrl!!.contains("dpop_jkt=$jkt"), f.browser.launchedUrl!!)
+    }
+
+    @OptIn(InternalAuth0Api::class)
+    @Test
+    fun login_dpopJktFailure_failsDPoP_doesNotLaunch_clearsTransaction() = runTest {
+        val f = fixture(
+            proofGenerator = DPoPProofGenerator(FakeKeyStore(failJwk = true)),
+            keygenLock = Mutex(),
+        )
+        val result = f.client.login()
+        assertTrue(result is Result.Failure && result.error is WebAuthError.DPoP)
+        assertNull(f.browser.launchedUrl)            // browser never launched
+        assertFalse(f.store.hasActiveTransaction())  // transaction cleared
     }
 }
