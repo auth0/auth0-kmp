@@ -11,6 +11,16 @@ import com.auth0.kmp.networking.networkClient
 import kotlin.time.Clock
 
 /**
+ * The default key credentials are stored under for the given [account], scoped
+ * to the account's client ID.
+ *
+ * @param account the tenant/application the credentials belong to.
+ */
+@InternalAuth0Api
+public fun defaultCredentialsStoreKey(account: Auth0Account): String =
+    "credentials_${account.clientId}"
+
+/**
  * Creates a [CredentialsManager] for the given [account], using a store key
  * scoped to the account's client ID and the platform secure storage.
  *
@@ -19,7 +29,7 @@ import kotlin.time.Clock
 public fun credentialsManager(
     account: Auth0Account,
 ): CredentialsManager =
-    credentialsManager(account, "credentials_${account.clientId}", createStorage())
+    credentialsManager(account, defaultCredentialsStoreKey(account), createStorage())
 
 /**
  * Creates a [CredentialsManager] for the given [account] and [storeKey], using
@@ -72,7 +82,7 @@ public fun credentialsManager(
 public fun credentialsManager(
     account: Auth0Account,
     networkClient: NetworkClient,
-    storeKey: String = "credentials_${account.clientId}",
+    storeKey: String = defaultCredentialsStoreKey(account),
     storage: Storage = createStorage(),
 ): CredentialsManager {
     val collaborators = DPoPRegistry.Default.collaboratorsFor(account)

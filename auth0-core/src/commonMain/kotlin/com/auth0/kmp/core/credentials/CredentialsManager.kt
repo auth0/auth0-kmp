@@ -58,7 +58,7 @@ public interface CredentialsManager : AutoCloseable {
      * Call this only when the manager was obtained from a standalone factory
      * (`credentialsManager(account)`). When obtained from `Auth0`, the transport
      * is shared and owned by the umbrella — close it via `Auth0.close()`
-     * instead;
+     * instead.
      */
     override fun close() {}
 }

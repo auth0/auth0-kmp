@@ -7,6 +7,7 @@ import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.credentials.CredentialsManager
 import com.auth0.kmp.credentials.Storage
 import com.auth0.kmp.credentials.credentialsManager
+import com.auth0.kmp.credentials.defaultCredentialsStoreKey
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.networkClient
 import com.auth0.kmp.webauth.WebAuthClient
@@ -33,7 +34,7 @@ public class Auth0 internal constructor(
 
     public constructor(account: Auth0Account) : this(
         networkClient = networkClient(account),
-        defaultStoreKey = "credentials_${account.clientId}",
+        defaultStoreKey = defaultCredentialsStoreKey(account),
         buildWebAuth = { network -> webAuthClient(account, network) },
         buildAuthentication = { network -> authenticationClient(account, network) },
         buildCredentials = { network, storeKey, storage ->

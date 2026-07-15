@@ -35,7 +35,7 @@ public interface AuthenticationClient : AutoCloseable {
      *
      * Call this only when the client was obtained from a standalone factory
      * (`authenticationClient(account)`). When obtained from `Auth0`, close it via
-     * `Auth0.close()` instead;
+     * `Auth0.close()` instead.
      */
     override fun close() {}
 }
