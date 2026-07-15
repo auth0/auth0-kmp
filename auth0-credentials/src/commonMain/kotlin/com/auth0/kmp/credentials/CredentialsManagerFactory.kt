@@ -5,6 +5,9 @@ import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.credentials.CredentialsManager
 import com.auth0.kmp.core.dpop.DPoPRegistry
 import com.auth0.kmp.core.token.tokenClient
+import com.auth0.kmp.core.useragent.Auth0UserAgent
+import com.auth0.kmp.networking.NetworkClient
+import com.auth0.kmp.networking.networkClient
 import kotlin.time.Clock
 
 /**
@@ -45,10 +48,37 @@ public fun credentialsManager(
     storeKey: String,
     storage: Storage,
 ): CredentialsManager {
+    val network = networkClient(account, Auth0UserAgent.default())
+    val client = credentialsManager(account, network, storeKey, storage)
+    return object : CredentialsManager by client {
+        override fun close() {
+            network.close()
+        }
+    }
+}
+
+/**
+ * Creates a [CredentialsManager] for the given [account] over an existing
+ * [networkClient], so a caller that already owns transport for the account can
+ * reuse it. The returned manager borrows the transport and does not close it.
+ *
+ * @param account the tenant/application coordinates renewals are sent to.
+ * @param networkClient the transport renewals are sent over.
+ * @param storeKey the key credentials are stored under.
+ * @param storage the secure store to persist credentials in.
+ */
+@OptIn(InternalAuth0Api::class)
+@InternalAuth0Api
+public fun credentialsManager(
+    account: Auth0Account,
+    networkClient: NetworkClient,
+    storeKey: String = "credentials_${account.clientId}",
+    storage: Storage = createStorage(),
+): CredentialsManager {
     val collaborators = DPoPRegistry.Default.collaboratorsFor(account)
     return DefaultCredentialsManager(
         clientId = account.clientId,
-        tokenClient = tokenClient(account),
+        tokenClient = tokenClient(networkClient, Clock.System),
         storage = storage,
         storeKey = storeKey,
         clock = Clock.System,

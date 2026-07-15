@@ -23,12 +23,12 @@ import com.auth0.kmp.core.context.ApplicationContextHolder
  * When no context has been captured, the first Android feature that needs one
  * fails with an [IllegalStateException] instructing you to call [init].
  */
-public object Auth0 {
+public object Auth0Android {
 
     /**
      * Supplies the SDK with an application [Context].
      *
-     * Most apps never call this; see [Auth0] for the cases that require it. The
+     * Most apps never call this; see [Auth0Android] for the cases that require it. The
      * given context's application context is retained. Safe to call more than
      * once — the most recent call wins.
      *

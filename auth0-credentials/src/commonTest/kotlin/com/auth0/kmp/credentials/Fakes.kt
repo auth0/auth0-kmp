@@ -59,8 +59,6 @@ internal class FakeTokenClient(
         lastHeaders = headers
         return outcome
     }
-
-    override fun close() {}
 }
 
 internal class MutableClock(var instant: Instant) : Clock {

@@ -36,8 +36,4 @@ internal class DefaultTokenClient(
             json.decodeFromString<TokenResponse>(it)
         }.map { it.toCredentials(clock) }
     }
-
-    override fun close() {
-        networkClient.close()
-    }
 }

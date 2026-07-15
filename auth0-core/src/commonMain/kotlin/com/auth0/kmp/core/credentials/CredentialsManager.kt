@@ -7,7 +7,7 @@ import com.auth0.kmp.core.result.Result
  * Securely stores [Credentials] on-device and returns them on demand, renewing
  * an expired or soon-to-expire access token via the refresh token first.
  */
-public interface CredentialsManager {
+public interface CredentialsManager : AutoCloseable {
 
     /**
      * Stores [credentials], replacing any previously stored credentials.
@@ -51,4 +51,14 @@ public interface CredentialsManager {
         headers: Map<String, String> = emptyMap(),
         forceRefresh: Boolean = false,
     ): Result<Credentials, CredentialsManagerError>
+
+    /**
+     * Releases the network transport backing this manager.
+     *
+     * Call this only when the manager was obtained from a standalone factory
+     * (`credentialsManager(account)`). When obtained from `Auth0`, the transport
+     * is shared and owned by the umbrella — close it via `Auth0.close()`
+     * instead;
+     */
+    override fun close() {}
 }

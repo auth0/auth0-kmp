@@ -35,6 +35,8 @@ kotlin {
         compilerOptions {
             jvmTarget = JvmTarget.JVM_17
         }
+
+        withHostTest { }
     }
 
     sourceSets {
@@ -43,6 +45,11 @@ kotlin {
             api(project(":auth0-authentication"))
             api(project(":auth0-webauth"))
             api(project(":auth0-credentials"))
+        }
+
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }

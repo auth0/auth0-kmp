@@ -13,9 +13,6 @@ import com.auth0.kmp.core.token.TokenGrant
 import com.auth0.kmp.core.validation.IdTokenValidationContext
 import com.auth0.kmp.core.validation.IdTokenValidationError
 import com.auth0.kmp.core.validation.IdTokenValidator
-import com.auth0.kmp.networking.NetworkClient
-import com.auth0.kmp.networking.request.NetworkRequest
-import com.auth0.kmp.networking.retry.RetryPolicy
 import com.auth0.kmp.webauth.browser.BrowserAgent
 import com.auth0.kmp.webauth.error.WebAuthError
 import com.auth0.kmp.webauth.pkce.Pkce
@@ -92,24 +89,8 @@ private class FakeTokenClient(
         lastGrant = grant
         return outcome
     }
-
-    override fun close() {}
 }
 
-private class FakeNetworkClient : NetworkClient {
-    var closed = false
-        private set
-
-    override suspend fun <T> request(
-        request: NetworkRequest,
-        retryPolicy: RetryPolicy,
-        deserialize: (String) -> T,
-    ): Result<T, TransportError> = error("not used in these tests")
-
-    override fun close() {
-        closed = true
-    }
-}
 
 private class FakeSignatureValidator(
     private val verdict: IdTokenValidationError?,
@@ -149,7 +130,6 @@ private class Fixture(
     val client: DefaultWebAuthClient,
     val browser: FakeBrowserAgent,
     val tokenClient: FakeTokenClient,
-    val network: FakeNetworkClient,
     val signature: FakeSignatureValidator,
     val claims: FakeClaimsValidator,
     val store: TransactionStore,
@@ -166,7 +146,6 @@ private fun fixture(
     keygenLock: Mutex? = null,
 ): Fixture {
     val tokenClient = FakeTokenClient(tokenOutcome)
-    val network = FakeNetworkClient()
     val signature = FakeSignatureValidator(signatureVerdict)
     val claims = FakeClaimsValidator(claimsVerdict)
     val client = DefaultWebAuthClient(
@@ -174,13 +153,12 @@ private fun fixture(
         browser = browser,
         store = store,
         tokenClient = tokenClient,
-        networkClient = network,
         signatureValidator = signature,
         claimsValidator = claims,
         proofGenerator = proofGenerator,
         keygenLock = keygenLock,
     )
-    return Fixture(client, browser, tokenClient, network, signature, claims, store)
+    return Fixture(client, browser, tokenClient, signature, claims, store)
 }
 
 class DefaultWebAuthClientTest {
@@ -360,13 +338,6 @@ class DefaultWebAuthClientTest {
         val f = fixture(signatureVerdict = IdTokenValidationError.InvalidSignature)
         f.client.login()
         assertFalse(f.store.hasActiveTransaction())
-    }
-
-    @Test
-    fun close_closesNetworkClient() {
-        val f = fixture()
-        f.client.close()
-        assertTrue(f.network.closed)
     }
 
     @Test
