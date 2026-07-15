@@ -1,60 +1,53 @@
 package com.auth0.kmp.authentication
 
 import com.auth0.kmp.authentication.error.AuthenticationError
+import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.error.TransportError
+import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.result.Result
+import com.auth0.kmp.core.token.TokenClient
+import com.auth0.kmp.core.token.TokenGrant
 import com.auth0.kmp.core.validation.IdTokenValidationContext
 import com.auth0.kmp.core.validation.IdTokenValidationError
 import com.auth0.kmp.core.validation.IdTokenValidator
-import com.auth0.kmp.core.result.Result
-import com.auth0.kmp.networking.NetworkClient
-import com.auth0.kmp.networking.request.HttpMethod
-import com.auth0.kmp.networking.request.NetworkRequest
-import com.auth0.kmp.networking.retry.RetryPolicy
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.time.Clock
 import kotlin.time.Instant
 
 private const val ID_TOKEN = "header.payload.signature"
 
-private fun tokenJson(
+private fun credentials(
     accessToken: String = "access-abc",
     idToken: String = ID_TOKEN,
     tokenType: String = "Bearer",
-    expiresIn: Long = 3600,
     refreshToken: String? = "refresh-xyz",
     scope: String? = "openid profile email",
-): String = buildString {
-    append("{")
-    append(""""access_token":"$accessToken",""")
-    append(""""id_token":"$idToken",""")
-    append(""""token_type":"$tokenType",""")
-    append(""""expires_in":$expiresIn""")
-    if (refreshToken != null) append(""","refresh_token":"$refreshToken"""")
-    if (scope != null) append(""","scope":"$scope"""")
-    append("}")
-}
+): Credentials = Credentials(
+    accessToken = accessToken,
+    idToken = idToken,
+    tokenType = tokenType,
+    expiresAt = Instant.fromEpochSeconds(1_000 + 3600),
+    refreshToken = refreshToken,
+    scope = scope,
+)
 
-private class FakeNetworkClient(
-    private val outcome: Result<String, TransportError>,
-) : NetworkClient {
-    var lastRequest: NetworkRequest? = null
+@OptIn(InternalAuth0Api::class)
+private class FakeTokenClient(
+    private val outcome: Result<Credentials, TransportError>,
+) : TokenClient {
+    var lastGrant: TokenGrant? = null
     var closed = false
         private set
 
-    override suspend fun <T> request(
-        request: NetworkRequest,
-        retryPolicy: RetryPolicy,
-        deserialize: (String) -> T,
-    ): Result<T, TransportError> {
-        lastRequest = request
-        return when (outcome) {
-            is Result.Success -> Result.Success(deserialize(outcome.data))
-            is Result.Failure -> outcome
-        }
+    override suspend fun fetchToken(
+        grant: TokenGrant,
+        headers: Map<String, String>,
+    ): Result<Credentials, TransportError> {
+        lastGrant = grant
+        return outcome
     }
 
     override fun close() {
@@ -78,40 +71,35 @@ private class FakeIdTokenValidator(
     }
 }
 
-private class FixedClock(private val at: Instant) : Clock {
-    override fun now(): Instant = at
-}
-
+@OptIn(InternalAuth0Api::class)
 private fun client(
-    outcome: Result<String, TransportError>,
+    outcome: Result<Credentials, TransportError>,
     validator: FakeIdTokenValidator = FakeIdTokenValidator(verdict = null),
-    clock: Clock = FixedClock(Instant.fromEpochSeconds(1_000)),
-    networkClient: FakeNetworkClient = FakeNetworkClient(outcome),
-): Pair<DefaultAuthenticationClient, Triple<FakeNetworkClient, FakeIdTokenValidator, Clock>> {
+    tokenClient: FakeTokenClient = FakeTokenClient(outcome),
+): Pair<DefaultAuthenticationClient, Pair<FakeTokenClient, FakeIdTokenValidator>> {
     val impl = DefaultAuthenticationClient(
         clientId = "client-123",
-        networkClient = networkClient,
+        tokenClient = tokenClient,
         idTokenValidator = validator,
-        clock = clock,
     )
-    return impl to Triple(networkClient, validator, clock)
+    return impl to (tokenClient to validator)
 }
 
 class DefaultAuthenticationClientTest {
 
     @Test
-    fun blankUsername_failsWithInvalidInput_andSendsNoRequest() = runTest {
-        val (impl, deps) = client(Result.Success(tokenJson()))
+    fun blankUsername_failsWithInvalidInput_andBuildsNoGrant() = runTest {
+        val (impl, deps) = client(Result.Success(credentials()))
 
         val result = impl.login(usernameOrEmail = " ", password = "pw", realm = "db")
 
         assertTrue(result is Result.Failure && result.error is AuthenticationError.InvalidInput)
-        assertNull(deps.first.lastRequest)
+        assertNull(deps.first.lastGrant)
     }
 
     @Test
     fun blankPassword_failsWithInvalidInput() = runTest {
-        val (impl, _) = client(Result.Success(tokenJson()))
+        val (impl, _) = client(Result.Success(credentials()))
 
         val result = impl.login(usernameOrEmail = "user", password = "", realm = "db")
 
@@ -120,7 +108,7 @@ class DefaultAuthenticationClientTest {
 
     @Test
     fun blankRealm_failsWithInvalidInput() = runTest {
-        val (impl, _) = client(Result.Success(tokenJson()))
+        val (impl, _) = client(Result.Success(credentials()))
 
         val result = impl.login(usernameOrEmail = "user", password = "pw", realm = "")
 
@@ -129,27 +117,24 @@ class DefaultAuthenticationClientTest {
 
     @Test
     fun success_returnsCredentials_withMappedFields() = runTest {
-        val (impl, _) = client(
-            outcome = Result.Success(tokenJson(expiresIn = 3600)),
-            clock = FixedClock(Instant.fromEpochSeconds(1_000)),
-        )
+        val (impl, _) = client(Result.Success(credentials()))
 
         val result = impl.login(usernameOrEmail = "user", password = "pw", realm = "db")
 
         assertTrue(result is Result.Success)
-        val credentials = result.data
-        assertEquals("access-abc", credentials.accessToken)
-        assertEquals(ID_TOKEN, credentials.idToken)
-        assertEquals("Bearer", credentials.tokenType)
-        assertEquals("refresh-xyz", credentials.refreshToken)
-        assertEquals("openid profile email", credentials.scope)
-        assertEquals(Instant.fromEpochSeconds(1_000 + 3600), credentials.expiresAt)
+        val creds = result.data
+        assertEquals("access-abc", creds.accessToken)
+        assertEquals(ID_TOKEN, creds.idToken)
+        assertEquals("Bearer", creds.tokenType)
+        assertEquals("refresh-xyz", creds.refreshToken)
+        assertEquals("openid profile email", creds.scope)
+        assertEquals(Instant.fromEpochSeconds(1_000 + 3600), creds.expiresAt)
     }
 
     @Test
     fun success_validatesTheReturnedIdToken() = runTest {
         val validator = FakeIdTokenValidator(verdict = null)
-        val (impl, _) = client(outcome = Result.Success(tokenJson()), validator = validator)
+        val (impl, _) = client(outcome = Result.Success(credentials()), validator = validator)
 
         impl.login(usernameOrEmail = "user", password = "pw", realm = "db")
 
@@ -157,26 +142,24 @@ class DefaultAuthenticationClientTest {
     }
 
     @Test
-    fun success_sendsPasswordRealmRequest() = runTest {
-        val (impl, deps) = client(Result.Success(tokenJson()))
+    fun success_buildsPasswordRealmGrant() = runTest {
+        val (impl, deps) = client(Result.Success(credentials()))
 
         impl.login(usernameOrEmail = "user", password = "pw", realm = "db", scope = "openid")
 
-        val request = deps.first.lastRequest!!
-        assertEquals(HttpMethod.POST, request.method)
-        assertEquals("/oauth/token", request.path)
-        val body = request.body!!
-        assertTrue(body.contains(""""client_id":"client-123""""))
-        assertTrue(body.contains("http://auth0.com/oauth/grant-type/password-realm"))
-        assertTrue(body.contains(""""username":"user""""))
-        assertTrue(body.contains(""""realm":"db""""))
-        assertTrue(body.contains(""""scope":"openid""""))
-        assertTrue(!body.contains("audience"))
+        val params = deps.first.lastGrant!!.parameters
+        assertEquals("http://auth0.com/oauth/grant-type/password-realm", params["grant_type"])
+        assertEquals("client-123", params["client_id"])
+        assertEquals("user", params["username"])
+        assertEquals("pw", params["password"])
+        assertEquals("db", params["realm"])
+        assertEquals("openid", params["scope"])
+        assertTrue(!params.containsKey("audience"))
     }
 
     @Test
-    fun audienceIncludedInBody_whenProvided() = runTest {
-        val (impl, deps) = client(Result.Success(tokenJson()))
+    fun audienceIncludedInGrant_whenProvided() = runTest {
+        val (impl, deps) = client(Result.Success(credentials()))
 
         impl.login(
             usernameOrEmail = "user",
@@ -185,7 +168,7 @@ class DefaultAuthenticationClientTest {
             audience = "https://api",
         )
 
-        assertTrue(deps.first.lastRequest!!.body!!.contains(""""audience":"https://api""""))
+        assertEquals("https://api", deps.first.lastGrant!!.parameters["audience"])
     }
 
     @Test
@@ -219,7 +202,7 @@ class DefaultAuthenticationClientTest {
     @Test
     fun idTokenInvalid_failsWithIdTokenValidation() = runTest {
         val (impl, _) = client(
-            outcome = Result.Success(tokenJson()),
+            outcome = Result.Success(credentials()),
             validator = FakeIdTokenValidator(verdict = IdTokenValidationError.InvalidIssuer),
         )
 
@@ -242,8 +225,8 @@ class DefaultAuthenticationClientTest {
     }
 
     @Test
-    fun close_closesNetworkClient() {
-        val (impl, deps) = client(Result.Success(tokenJson()))
+    fun close_closesTokenClient() {
+        val (impl, deps) = client(Result.Success(credentials()))
 
         impl.close()
 

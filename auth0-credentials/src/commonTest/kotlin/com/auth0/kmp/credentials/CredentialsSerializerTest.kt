@@ -22,7 +22,8 @@ class CredentialsSerializerTest {
 
         val decoded = CredentialsSerializer.decode(CredentialsSerializer.encode(credentials))
 
-        assertEquals(credentials, decoded)
+        assertEquals(credentials, decoded.credentials)
+        assertEquals(null, decoded.dpopThumbprint)
     }
 
     @Test
@@ -38,7 +39,26 @@ class CredentialsSerializerTest {
 
         val decoded = CredentialsSerializer.decode(CredentialsSerializer.encode(credentials))
 
-        assertEquals(credentials, decoded)
+        assertEquals(credentials, decoded.credentials)
+    }
+
+    @Test
+    fun round_trips_dpop_thumbprint() {
+        val credentials = Credentials(
+            accessToken = "access-token",
+            idToken = "id-token",
+            tokenType = "DPoP",
+            expiresAt = Instant.fromEpochSeconds(1_700_000_000),
+            refreshToken = "refresh-token",
+            scope = "openid",
+        )
+
+        val decoded = CredentialsSerializer.decode(
+            CredentialsSerializer.encode(credentials, dpopThumbprint = "the-jkt"),
+        )
+
+        assertEquals(credentials, decoded.credentials)
+        assertEquals("the-jkt", decoded.dpopThumbprint)
     }
 
     @Test

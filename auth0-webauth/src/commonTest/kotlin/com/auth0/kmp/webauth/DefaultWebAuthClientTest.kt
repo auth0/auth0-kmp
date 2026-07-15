@@ -140,6 +140,7 @@ private class FakeKeyStore(private val failJwk: Boolean = false) : DPoPKeyStore 
         if (failJwk) throw RuntimeException("keystore boom") // → DPoPError.Unknown
         return DPoPJwk(x = "x", y = "y")
     }
+    override fun publicJwkOrNull(): DPoPJwk? = publicJwk()
     override fun sign(data: ByteArray): ByteArray = ByteArray(64)
     override fun clear() {}
 }

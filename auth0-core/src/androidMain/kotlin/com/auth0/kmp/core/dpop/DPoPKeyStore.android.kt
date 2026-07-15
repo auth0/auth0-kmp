@@ -36,6 +36,11 @@ internal class AndroidDPoPKeyStore(private val keyAlias: String) : DPoPKeyStore 
         return publicKey.toJwk()
     }
 
+    override fun publicJwkOrNull(): DPoPJwk? {
+        if (!hasKey()) return null
+        return loadPublicKey().toJwk()
+    }
+
     override fun sign(data: ByteArray): ByteArray {
         val privateKey = loadPrivateKey()
         return try {

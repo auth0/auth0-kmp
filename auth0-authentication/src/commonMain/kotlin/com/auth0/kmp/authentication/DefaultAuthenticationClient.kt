@@ -2,23 +2,19 @@ package com.auth0.kmp.authentication
 
 import com.auth0.kmp.authentication.error.AuthenticationError
 import com.auth0.kmp.authentication.error.toAuthenticationError
-import com.auth0.kmp.authentication.request.LoginRequest
+import com.auth0.kmp.authentication.request.PasswordRealmGrant
+import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.model.Credentials
-import com.auth0.kmp.core.token.TokenResponse
-import com.auth0.kmp.core.token.toCredentials
-import com.auth0.kmp.core.validation.IdTokenValidator
 import com.auth0.kmp.core.result.Result
-import com.auth0.kmp.networking.NetworkClient
-import com.auth0.kmp.networking.request.HttpMethod
-import com.auth0.kmp.networking.request.NetworkRequest
-import com.auth0.kmp.networking.transport.json
-import kotlin.time.Clock
+import com.auth0.kmp.core.result.fold
+import com.auth0.kmp.core.token.TokenClient
+import com.auth0.kmp.core.validation.IdTokenValidator
 
+@OptIn(InternalAuth0Api::class)
 internal class DefaultAuthenticationClient(
     private val clientId: String,
-    private val networkClient: NetworkClient,
+    private val tokenClient: TokenClient,
     private val idTokenValidator: IdTokenValidator,
-    private val clock: Clock
 ) : AuthenticationClient {
 
     override suspend fun login(
@@ -38,40 +34,28 @@ internal class DefaultAuthenticationClient(
             return Result.Failure(AuthenticationError.InvalidInput("realm must not be blank"))
         }
 
-        val body = LoginRequest(
-            username = usernameOrEmail,
+        val grant = PasswordRealmGrant(
+            usernameOrEmail = usernameOrEmail,
             password = password,
             realm = realm,
             clientId = clientId,
             scope = scope,
-            audience = audience
+            audience = audience,
         )
 
-        val request = NetworkRequest(
-            method = HttpMethod.POST,
-            path = "/oauth/token",
-            body = json.encodeToString(body)
-        )
-
-        return when (val result = networkClient.request(request) {
-            json.decodeFromString<TokenResponse>(it)
-        }) {
-            is Result.Failure -> Result.Failure(result.error.toAuthenticationError())
-            is Result.Success -> {
-                val credentials = result.data.toCredentials(clock)
-                val validationError = idTokenValidator.validate(credentials.idToken)
-                if (validationError != null) {
-                    Result.Failure(AuthenticationError.IdTokenValidation(validationError))
-                } else {
-                    Result.Success(credentials)
-                }
+        return tokenClient.fetchToken(grant).fold({ data ->
+            val validationError = idTokenValidator.validate(data.idToken)
+            if (validationError != null) {
+                Result.Failure(AuthenticationError.IdTokenValidation(validationError))
+            } else {
+                Result.Success(data)
             }
-
-        }
-
+        }, { error ->
+            Result.Failure(error.toAuthenticationError())
+        })
     }
 
     override fun close() {
-        networkClient.close()
+        tokenClient.close()
     }
 }

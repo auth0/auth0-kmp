@@ -1,5 +1,6 @@
 package com.auth0.kmp.core.credentials
 
+import com.auth0.kmp.core.dpop.DPoPError
 import com.auth0.kmp.core.error.Auth0Error
 import com.auth0.kmp.core.error.TransportError
 
@@ -70,4 +71,35 @@ public sealed interface CredentialsManagerError : Auth0Error {
      * @param cause the underlying cryptographic failure, if any.
      */
     public data class CryptoFailed(val cause: Throwable? = null) : CredentialsManagerError
+
+    /**
+     * Stored credentials are bound to a DPoP keypair that no longer exists on the
+     * device. The SDK makes a best-effort attempt to clear the stored credentials
+     * but does not report whether that clear succeeded. Authenticate again to
+     * recover: a fresh login re-binds and overwrites the stored credentials.
+     */
+    public data object DPoPKeyMissing : CredentialsManagerError
+
+    /**
+     * Stored credentials are bound to a DPoP keypair that no longer matches the one
+     * on the device. The SDK makes a best-effort attempt to clear the stored
+     * credentials but does not report whether that clear succeeded. Authenticate
+     * again to recover: a fresh login re-binds and overwrites the stored credentials.
+     */
+    public data object DPoPKeyMismatch : CredentialsManagerError
+
+    /**
+     * Stored credentials are DPoP-bound but the account is no longer configured to use
+     * DPoP. The credentials are retained; re-enable DPoP for the account to use them.
+     */
+    public data object DPoPNotConfigured : CredentialsManagerError
+
+    /**
+     * The DPoP keypair could not be read from the device key store while validating
+     * DPoP-bound credentials, so the binding could not be confirmed. The credentials
+     * are retained; the operation may be retried.
+     *
+     * @param cause the underlying DPoP key-store failure.
+     */
+    public data class DPoPKeyUnavailable(val cause: DPoPError) : CredentialsManagerError
 }

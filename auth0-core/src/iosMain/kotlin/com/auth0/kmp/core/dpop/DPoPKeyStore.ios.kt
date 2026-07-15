@@ -68,21 +68,35 @@ internal class IosDPoPKeyStore(private val keyTag: String) : DPoPKeyStore {
     override fun publicJwk(): DPoPJwk = autoreleasepool {
         val privateKey = copyPrivateKey() ?: createPrivateKey()
         try {
-            val publicKey = SecKeyCopyPublicKey(privateKey)
-                ?: throw DPoPException(DPoPError.KeyStoreFailed())
-            try {
-                val external = memScoped {
-                    val error = alloc<CFErrorRefVar>()
-                    SecKeyCopyExternalRepresentation(publicKey, error.ptr)
-                        ?: throw DPoPException(DPoPError.KeyStoreFailed(error.toThrowable()))
-                }
-                val point = (CFBridgingRelease(external) as NSData).toByteArray()
-                point.toJwk()
-            } finally {
-                CFRelease(publicKey)
-            }
+            jwkFrom(privateKey)
         } finally {
             CFRelease(privateKey)
+        }
+    }
+
+    override fun publicJwkOrNull(): DPoPJwk? = autoreleasepool {
+        val privateKey = copyPrivateKey() ?: return@autoreleasepool null
+        try {
+            jwkFrom(privateKey)
+        } finally {
+            CFRelease(privateKey)
+        }
+    }
+
+    /** Derives the public JWK from a retained private-key ref. Does not release [privateKey]. */
+    private fun jwkFrom(privateKey: SecKeyRef): DPoPJwk {
+        val publicKey = SecKeyCopyPublicKey(privateKey)
+            ?: throw DPoPException(DPoPError.KeyStoreFailed())
+        try {
+            val external = memScoped {
+                val error = alloc<CFErrorRefVar>()
+                SecKeyCopyExternalRepresentation(publicKey, error.ptr)
+                    ?: throw DPoPException(DPoPError.KeyStoreFailed(error.toThrowable()))
+            }
+            val point = (CFBridgingRelease(external) as NSData).toByteArray()
+            return point.toJwk()
+        } finally {
+            CFRelease(publicKey)
         }
     }
 

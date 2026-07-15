@@ -43,7 +43,7 @@ class DefaultCredentialsManagerTest {
         val result = manager(storage).saveCredentials(creds)
 
         assertIs<Result.Success<Unit>>(result)
-        assertEquals(creds, CredentialsSerializer.decode(storage.retrieve(storeKey)!!))
+        assertEquals(creds, CredentialsSerializer.decode(storage.retrieve(storeKey)!!).credentials)
     }
 
     @Test
@@ -148,7 +148,7 @@ class DefaultCredentialsManagerTest {
         assertEquals("refresh_token", tokenClient.lastGrantParameters?.get("grant_type"))
         assertEquals("stored-rt", tokenClient.lastGrantParameters?.get("refresh_token"))
         assertEquals("api", tokenClient.lastGrantParameters?.get("audience"))
-        assertEquals(renewed, CredentialsSerializer.decode(storage.retrieve(storeKey)!!))
+        assertEquals(renewed, CredentialsSerializer.decode(storage.retrieve(storeKey)!!).credentials)
     }
 
     @Test

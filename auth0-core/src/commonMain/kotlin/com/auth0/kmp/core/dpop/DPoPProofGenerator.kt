@@ -42,9 +42,17 @@ public class DPoPProofGenerator(
             }
         }.toDPoPResult()
 
+    /** Whether a DPoP keypair currently exists in the store, without creating one. */
+    public fun hasKey(): Result<Boolean, DPoPError> =
+        runCatching { keyStore.hasKey() }.toDPoPResult()
+
     /** The JWK thumbprint (`jkt`) of the DPoP public key, creating the keypair if needed. */
     public fun jkt(): Result<String, DPoPError> =
         runCatching { keyStore.publicJwk().thumbprint() }.toDPoPResult()
+
+    /** The JWK thumbprint of an existing keypair, or null if none exists, without creating one. */
+    public fun jktIfPresent(): Result<String?, DPoPError> =
+        runCatching { keyStore.publicJwkOrNull()?.thumbprint() }.toDPoPResult()
 
     /**
      * Generates a DPoP proof for the given request, creating the keypair if needed.

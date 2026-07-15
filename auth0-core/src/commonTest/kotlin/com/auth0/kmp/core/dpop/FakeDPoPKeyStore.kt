@@ -17,6 +17,8 @@ internal class FakeDPoPKeyStore(
         private set
     var publicJwkCallCount: Int = 0
         private set
+    var publicJwkOrNullCallCount: Int = 0
+        private set
     var signCallCount: Int = 0
         private set
     var clearCallCount: Int = 0
@@ -42,6 +44,13 @@ internal class FakeDPoPKeyStore(
         publicJwkCallCount++
         failPublicJwkWith?.let { throw DPoPException(it) }
         hasKey = true
+        return jwk
+    }
+
+    override fun publicJwkOrNull(): DPoPJwk? {
+        publicJwkOrNullCallCount++
+        if (!hasKey) return null
+        failPublicJwkWith?.let { throw DPoPException(it) }
         return jwk
     }
 

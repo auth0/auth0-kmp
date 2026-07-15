@@ -19,16 +19,15 @@ sealed interface Result<out D, out E : Auth0Error> {
 }
 
 /**
- * Runs [onSuccess] or [onFailure] depending on which variant this is.
+ * Runs [onSuccess] or [onFailure] depending on which variant this is, returning
+ * the value produced by whichever branch ran.
  */
-inline fun <D, E : Auth0Error> Result<D, E>.fold(
-    onSuccess: (D) -> Unit,
-    onFailure: (E) -> Unit
-) {
-    when (this) {
-        is Result.Success -> onSuccess(data)
-        is Result.Failure -> onFailure(error)
-    }
+inline fun <D, E : Auth0Error, R> Result<D, E>.fold(
+    onSuccess: (D) -> R,
+    onFailure: (E) -> R
+): R = when (this) {
+    is Result.Success -> onSuccess(data)
+    is Result.Failure -> onFailure(error)
 }
 
 /** Returns the success data, or `null` if this is a [Result.Failure]. */

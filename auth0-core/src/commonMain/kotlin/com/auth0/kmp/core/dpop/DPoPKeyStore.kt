@@ -16,6 +16,9 @@ public interface DPoPKeyStore {
     /** The public JWK for the DPoP keypair, generating the keypair first if none exists. */
     public fun publicJwk(): DPoPJwk
 
+    /** The public JWK for an existing DPoP keypair, or null if none exists. Never creates one. */
+    public fun publicJwkOrNull(): DPoPJwk?
+
     /**
      * Signs [data] with the DPoP private key.
      *
