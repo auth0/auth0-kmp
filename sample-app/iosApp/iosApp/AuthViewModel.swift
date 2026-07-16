@@ -78,7 +78,8 @@ final class AuthViewModel {
         let account = Auth0Account(
             clientId: clientId,
             domain: domain,
-            configuration: configuration
+            configuration: configuration,
+            useDPoP: false
         )
         let userAgent = Auth0UserAgent.companion.default()
         client = authenticationClient(account: account, userAgent: userAgent)
@@ -122,7 +123,16 @@ final class AuthViewModel {
         }
     }
 
-    func login(email: String, password: String, realm: String) async {
+    func login(
+        email: String,
+        password: String,
+        realm: String,
+        options: RequestOptions = RequestOptions(
+            parameters: [:],
+            headers: [:],
+            retryPolicy: RetryPolicy.companion.None
+        )
+    ) async {
         guard let client else { return }
         state = .loading
         do {
@@ -133,7 +143,8 @@ final class AuthViewModel {
                 password: password,
                 realm: realm,
                 audience: audience,
-                scope: "openid profile email offline_access"
+                scope: "openid profile email offline_access",
+                options: options
             )
             // SKIE turns the Kotlin sealed `Result` into a Swift enum we can
             // switch over exhaustively. The payload generic erases to AnyObject,

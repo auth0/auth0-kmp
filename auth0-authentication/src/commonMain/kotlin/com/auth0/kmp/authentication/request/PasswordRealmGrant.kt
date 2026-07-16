@@ -11,8 +11,10 @@ internal class PasswordRealmGrant(
     clientId: String,
     scope: String,
     audience: String?,
+    extraParameters: Map<String, String> = emptyMap(),
 ) : TokenGrant {
     override val parameters: Map<String, String> = buildMap {
+        putAll(extraParameters)
         put("grant_type", "http://auth0.com/oauth/grant-type/password-realm")
         put("client_id", clientId)
         put("username", usernameOrEmail)

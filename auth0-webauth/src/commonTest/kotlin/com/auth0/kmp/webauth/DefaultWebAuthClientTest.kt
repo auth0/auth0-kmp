@@ -13,6 +13,7 @@ import com.auth0.kmp.core.token.TokenGrant
 import com.auth0.kmp.core.validation.IdTokenValidationContext
 import com.auth0.kmp.core.validation.IdTokenValidationError
 import com.auth0.kmp.core.validation.IdTokenValidator
+import com.auth0.kmp.networking.retry.RetryPolicy
 import com.auth0.kmp.webauth.browser.BrowserAgent
 import com.auth0.kmp.webauth.error.WebAuthError
 import com.auth0.kmp.webauth.pkce.Pkce
@@ -85,6 +86,7 @@ private class FakeTokenClient(
     override suspend fun fetchToken(
         grant: TokenGrant,
         headers: Map<String, String>,
+        retryPolicy: RetryPolicy,
     ): Result<Credentials, TransportError> {
         lastGrant = grant
         return outcome

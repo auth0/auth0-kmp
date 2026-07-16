@@ -5,12 +5,15 @@ import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.request.HttpMethod
 import com.auth0.kmp.networking.request.NetworkRequest
+import com.auth0.kmp.networking.retry.Backoff
 import com.auth0.kmp.networking.retry.RetryPolicy
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Instant
 
 private fun tokenJson(): String =
@@ -24,12 +27,14 @@ private class FakeNetworkClient(
     private val outcome: Result<String, TransportError>,
 ) : NetworkClient {
     var lastRequest: NetworkRequest? = null
+    var lastRetryPolicy: RetryPolicy? = null
     override suspend fun <T> request(
         request: NetworkRequest,
         retryPolicy: RetryPolicy,
         deserialize: (String) -> T,
     ): Result<T, TransportError> {
         lastRequest = request
+        lastRetryPolicy = retryPolicy
         return when (outcome) {
             is Result.Success -> Result.Success(deserialize(outcome.data))
             is Result.Failure -> outcome
@@ -89,5 +94,20 @@ class DefaultTokenClientTest {
 
         result as Result.Failure<TransportError>
         assertEquals(TransportError.NoInternet, result.error)
+    }
+
+    @Test
+    fun forwards_retryPolicy_to_networkClient() = runTest {
+        val net = FakeNetworkClient(Result.Success(tokenJson()))
+        val client = DefaultTokenClient(net, FixedClock(Instant.fromEpochSeconds(0)))
+        val policy = RetryPolicy(
+            maxAttempts = 3,
+            backoff = Backoff.Fixed(Duration.ZERO),
+            retryOn = { true },
+        )
+
+        client.fetchToken(StubGrant(emptyMap()), retryPolicy = policy)
+
+        assertSame(policy, net.lastRetryPolicy)
     }
 }

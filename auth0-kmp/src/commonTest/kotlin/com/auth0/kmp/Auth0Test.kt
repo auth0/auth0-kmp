@@ -2,6 +2,7 @@ package com.auth0.kmp
 
 import com.auth0.kmp.authentication.AuthenticationClient
 import com.auth0.kmp.authentication.error.AuthenticationError
+import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.credentials.CredentialsManager
 import com.auth0.kmp.core.credentials.CredentialsManagerError
@@ -53,6 +54,7 @@ private class FakeAuthenticationClient : AuthenticationClient {
         realm: String,
         audience: String?,
         scope: String,
+        options: RequestOptions,
     ): Result<Credentials, AuthenticationError> = error("not used")
 }
 

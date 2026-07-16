@@ -5,8 +5,11 @@ import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
+import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.token.TokenClient
 import com.auth0.kmp.core.token.TokenGrant
+import com.auth0.kmp.networking.retry.Backoff
+import com.auth0.kmp.networking.retry.RetryPolicy
 import com.auth0.kmp.core.validation.IdTokenValidationContext
 import com.auth0.kmp.core.validation.IdTokenValidationError
 import com.auth0.kmp.core.validation.IdTokenValidator
@@ -14,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -39,12 +43,17 @@ private class FakeTokenClient(
     private val outcome: Result<Credentials, TransportError>,
 ) : TokenClient {
     var lastGrant: TokenGrant? = null
+    var lastHeaders: Map<String, String>? = null
+    var lastRetryPolicy: RetryPolicy? = null
 
     override suspend fun fetchToken(
         grant: TokenGrant,
         headers: Map<String, String>,
+        retryPolicy: RetryPolicy,
     ): Result<Credentials, TransportError> {
         lastGrant = grant
+        lastHeaders = headers
+        lastRetryPolicy = retryPolicy
         return outcome
     }
 }
@@ -216,5 +225,62 @@ class DefaultAuthenticationClientTest {
         impl.login(usernameOrEmail = "user", password = "pw", realm = "db")
 
         assertNull(validator.lastIdToken)
+    }
+
+    @Test
+    fun login_forwardsOptionsHeaders_toFetchToken() = runTest {
+        val (impl, deps) = client(Result.Success(credentials()))
+
+        impl.login(
+            usernameOrEmail = "user",
+            password = "pw",
+            realm = "db",
+            options = RequestOptions(headers = mapOf("X-H" to "v")),
+        )
+
+        assertEquals("v", deps.first.lastHeaders!!["X-H"])
+    }
+
+    @Test
+    fun login_forwardsOptionsRetryPolicy_toFetchToken() = runTest {
+        val (impl, deps) = client(Result.Success(credentials()))
+        val policy = RetryPolicy(
+            maxAttempts = 3,
+            backoff = Backoff.Fixed(kotlin.time.Duration.ZERO),
+            retryOn = { true },
+        )
+
+        impl.login(
+            usernameOrEmail = "user",
+            password = "pw",
+            realm = "db",
+            options = RequestOptions(retryPolicy = policy),
+        )
+
+        assertSame(policy, deps.first.lastRetryPolicy)
+    }
+
+    @Test
+    fun login_mergesOptionsParameters_intoGrant() = runTest {
+        val (impl, deps) = client(Result.Success(credentials()))
+
+        impl.login(
+            usernameOrEmail = "user",
+            password = "pw",
+            realm = "db",
+            options = RequestOptions(parameters = mapOf("organization" to "org_1")),
+        )
+
+        assertEquals("org_1", deps.first.lastGrant!!.parameters["organization"])
+    }
+
+    @Test
+    fun login_withDefaultOptions_sendsEmptyHeaders_andRetryPolicyNone() = runTest {
+        val (impl, deps) = client(Result.Success(credentials()))
+
+        impl.login(usernameOrEmail = "user", password = "pw", realm = "db")
+
+        assertTrue(deps.first.lastHeaders!!.isEmpty())
+        assertEquals(RetryPolicy.None, deps.first.lastRetryPolicy)
     }
 }

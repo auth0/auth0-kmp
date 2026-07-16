@@ -1,6 +1,7 @@
 package com.auth0.kmp.authentication
 
 import com.auth0.kmp.authentication.error.AuthenticationError
+import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 
@@ -19,6 +20,7 @@ public interface AuthenticationClient : AutoCloseable {
      * @param audience the unique identifier of the API to request access to, or
      *   `null` to omit it.
      * @param scope the space-separated scopes to request.
+     * @param options per-call transport options (extra parameters, headers, retry policy).
      * @return [Result.Success] with the issued [Credentials], or [Result.Failure]
      *   with the [AuthenticationError] that occurred.
      */
@@ -28,6 +30,7 @@ public interface AuthenticationClient : AutoCloseable {
         realm: String,
         audience: String? = null,
         scope: String = "openid profile email",
+        options: RequestOptions = RequestOptions(),
     ): Result<Credentials, AuthenticationError>
 
     /**
