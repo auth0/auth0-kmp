@@ -68,10 +68,51 @@ class PasswordRealmGrantTest {
             clientId = "client-123",
             scope = "openid",
             audience = null,
-            extraParameters = mapOf("grant_type" to "evil", "client_id" to "hacker"),
+            extraParameters = mapOf(
+                "grant_type" to "evil",
+                "client_id" to "hacker",
+                "username" to "attacker",
+                "password" to "leak",
+                "realm" to "evil-realm",
+                "scope" to "hacked",
+            ),
         ).parameters
 
         assertEquals("http://auth0.com/oauth/grant-type/password-realm", params["grant_type"])
         assertEquals("client-123", params["client_id"])
+        assertEquals("user", params["username"])
+        assertEquals("pw", params["password"])
+        assertEquals("db", params["realm"])
+        assertEquals("openid", params["scope"])
+    }
+
+    @Test
+    fun audienceFromExtraParameters_survives_whenTypedAudienceIsNull() {
+        val params = PasswordRealmGrant(
+            usernameOrEmail = "user",
+            password = "pw",
+            realm = "db",
+            clientId = "client-123",
+            scope = "openid",
+            audience = null,
+            extraParameters = mapOf("audience" to "https://from-extra"),
+        ).parameters
+
+        assertEquals("https://from-extra", params["audience"])
+    }
+
+    @Test
+    fun typedAudience_winsOver_extraParameters() {
+        val params = PasswordRealmGrant(
+            usernameOrEmail = "user",
+            password = "pw",
+            realm = "db",
+            clientId = "client-123",
+            scope = "openid",
+            audience = "https://typed",
+            extraParameters = mapOf("audience" to "https://from-extra"),
+        ).parameters
+
+        assertEquals("https://typed", params["audience"])
     }
 }
