@@ -54,8 +54,4 @@ internal class DefaultAuthenticationClient(
             Result.Failure(error.toAuthenticationError())
         })
     }
-
-    override fun close() {
-        tokenClient.close()
-    }
 }

@@ -39,8 +39,6 @@ private class FakeTokenClient(
     private val outcome: Result<Credentials, TransportError>,
 ) : TokenClient {
     var lastGrant: TokenGrant? = null
-    var closed = false
-        private set
 
     override suspend fun fetchToken(
         grant: TokenGrant,
@@ -48,10 +46,6 @@ private class FakeTokenClient(
     ): Result<Credentials, TransportError> {
         lastGrant = grant
         return outcome
-    }
-
-    override fun close() {
-        closed = true
     }
 }
 
@@ -222,14 +216,5 @@ class DefaultAuthenticationClientTest {
         impl.login(usernameOrEmail = "user", password = "pw", realm = "db")
 
         assertNull(validator.lastIdToken)
-    }
-
-    @Test
-    fun close_closesTokenClient() {
-        val (impl, deps) = client(Result.Success(credentials()))
-
-        impl.close()
-
-        assertTrue(deps.first.closed)
     }
 }

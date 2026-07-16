@@ -46,6 +46,29 @@ val account = Auth0Account(
 - `configuration: NetworkingConfiguration` — networking/transport tuning.
 - `useDPoP: Boolean = false` — opt in to sender-constrained (DPoP) tokens.
 
+### Create the SDK entry point
+
+`Auth0` is the recommended entry point when you use more than one feature. It
+owns a single network transport shared by every client it vends, so you
+configure the account once and reuse it everywhere.
+
+```kotlin
+import com.auth0.kmp.Auth0
+
+val auth0 = Auth0(account)
+
+val webAuth = auth0.webAuth               // browser login/logout
+val authentication = auth0.authentication // direct Authentication API
+val credentials = auth0.credentials()     // secure credential storage
+```
+ 
+When you are finished with the SDK, close it to release the
+shared transport:
+
+```kotlin
+auth0.close()
+```
+
 ### Android setup
 
 **1. Provide an application `Context`.** The SDK captures it automatically via
@@ -53,9 +76,9 @@ val account = Auth0Account(
 explicitly once (for example in your `Application.onCreate`):
 
 ```kotlin
-import com.auth0.kmp.core.Auth0
+import com.auth0.kmp.core.Auth0Android
 
-Auth0.init(context)
+Auth0Android.init(context)
 ```
 
 **2. Declare the callback scheme.** Web Auth needs the redirect scheme and domain
@@ -177,8 +200,10 @@ manager.clearCredentials()
 ```
 
 `getCredentials` accepts optional `scope`, `minTtl`, `parameters`, `headers`, and
-`forceRefresh` arguments. For custom persistence, additional `credentialsManager`
-overloads accept a `storeKey` and your own `Storage` implementation.
+`forceRefresh` arguments. For custom persistence, pass a `storeKey` and your own
+`Storage` implementation — either through the umbrella (`auth0.credentials(storeKey)`
+or `auth0.credentials(storeKey, storage)`) or via the standalone `credentialsManager`
+overloads.
 
 ### Handling results
 
@@ -196,6 +221,18 @@ result.fold(
 
 val credentials = result.getOrNull()
 ```
+
+## Modules
+
+The SDK is split into focused modules. 
+
+| Module | Provides |
+|--------|----------|
+| `auth0-kmp` | Umbrella: the `Auth0` entry point and the shared-transport composition root. Aggregates all feature modules. |
+| `auth0-core` | `Auth0Account`, the `Result` type and error hierarchies, and shared building blocks used by the other modules. |
+| `auth0-webauth` | Browser-based Universal Login and logout (`WebAuthClient`). |
+| `auth0-authentication` | Direct calls against the Authentication API (`AuthenticationClient`). |
+| `auth0-credentials` | Secure, platform-native credential storage and renewal (`CredentialsManager`). |
 
 ## Feedback
 

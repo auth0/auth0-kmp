@@ -6,7 +6,7 @@ import com.auth0.kmp.core.annotation.InternalAuth0Api
 /**
  * Process-wide store for the application [Context] the SDK's Android features
  * rely on. Populated automatically at app launch, or explicitly via
- * [com.auth0.kmp.core.Auth0.init].
+ * [com.auth0.kmp.core.Auth0Android.init].
  */
 @InternalAuth0Api
 public object ApplicationContextHolder {
@@ -22,7 +22,7 @@ public object ApplicationContextHolder {
         get() = applicationContext ?: error(
             "Auth0 SDK could not obtain an Android Context. This normally " +
                 "happens automatically at app launch. If the automatic " +
-                "initializer was removed call Auth0.init(context) first."
+                "initializer was removed call Auth0Android.init(context) first."
         )
 
     /** Stores the application context derived from [context]. */

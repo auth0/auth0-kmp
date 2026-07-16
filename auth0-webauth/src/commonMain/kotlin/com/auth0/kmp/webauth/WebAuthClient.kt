@@ -30,4 +30,12 @@ public interface WebAuthClient : AutoCloseable {
 
     /** Cancels an in-progress login, if any. */
     public fun cancel()
+
+    /**
+     * Releases the network transport backing this client.
+     *
+     * Call this only when the client was obtained from a standalone factory
+     * (`webAuthClient(account)`). When obtained from `Auth0`, close it via `Auth0.close()` instead.
+     */
+    override fun close() {}
 }

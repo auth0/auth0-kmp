@@ -6,9 +6,6 @@ import com.auth0.kmp.core.result.Result
 
 /**
  * Performs authentication operations against an Auth0 tenant.
- *
- * Holds a network engine and its connection pool; call [close] to release them
- * when the client is no longer needed.
  */
 public interface AuthenticationClient : AutoCloseable {
 
@@ -32,4 +29,13 @@ public interface AuthenticationClient : AutoCloseable {
         audience: String? = null,
         scope: String = "openid profile email",
     ): Result<Credentials, AuthenticationError>
+
+    /**
+     * Releases the network transport backing this client.
+     *
+     * Call this only when the client was obtained from a standalone factory
+     * (`authenticationClient(account)`). When obtained from `Auth0`, close it via
+     * `Auth0.close()` instead.
+     */
+    override fun close() {}
 }

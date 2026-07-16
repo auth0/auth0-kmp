@@ -9,7 +9,7 @@ import com.auth0.kmp.core.result.Result
  * Exchanges an OAuth [TokenGrant] at `/oauth/token` for fresh [Credentials].
  */
 @InternalAuth0Api
-public interface TokenClient : AutoCloseable {
+public interface TokenClient {
 
     /**
      * Exchanges [grant] at `/oauth/token` for fresh [Credentials].
@@ -23,6 +23,4 @@ public interface TokenClient : AutoCloseable {
         grant: TokenGrant,
         headers: Map<String, String> = emptyMap(),
     ): Result<Credentials, TransportError>
-
-    override fun close()
 }

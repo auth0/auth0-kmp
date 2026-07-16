@@ -19,10 +19,12 @@ private const val MASTER_KEY_URI = "android-keystore://auth0_credentials_master_
 private val Context.credentialsDataStore: DataStore<Preferences> by
     preferencesDataStore(name = DATASTORE_NAME)
 
+private val sharedAead: Aead by lazy { buildAead(ApplicationContextHolder.context) }
+
 internal actual fun createStorage(): Storage {
     val context = ApplicationContextHolder.context
     val persistence = DataStoreStorage(context.credentialsDataStore)
-    return EncryptedStorage(persistence) { buildAead(context) }
+    return EncryptedStorage(persistence) { sharedAead }
 }
 
 private fun buildAead(context: Context): Aead {

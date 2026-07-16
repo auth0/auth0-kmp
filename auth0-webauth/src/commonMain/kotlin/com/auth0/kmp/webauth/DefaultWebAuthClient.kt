@@ -8,7 +8,6 @@ import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.validation.IdTokenValidationContext
 import com.auth0.kmp.core.validation.IdTokenValidator
-import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.webauth.authorize.buildAuthorizeUrl
 import com.auth0.kmp.webauth.authorize.buildLogoutUrl
 import com.auth0.kmp.webauth.browser.BrowserAgent
@@ -30,7 +29,6 @@ internal class DefaultWebAuthClient(
     private val browser: BrowserAgent,
     private val store: TransactionStore,
     private val tokenClient: TokenClient,
-    private val networkClient: NetworkClient,
     private val signatureValidator: IdTokenSignatureValidator,
     private val claimsValidator: IdTokenValidator,
     private val proofGenerator: DPoPProofGenerator? = null,
@@ -143,9 +141,5 @@ internal class DefaultWebAuthClient(
 
     override fun cancel() {
         store.current()?.let { store.clear(it.state) }
-    }
-
-    override fun close() {
-        networkClient.close()
     }
 }
