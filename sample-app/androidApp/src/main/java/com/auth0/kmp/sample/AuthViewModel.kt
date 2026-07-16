@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.auth0.kmp.authentication.authenticationClient
 import com.auth0.kmp.core.Auth0Account
 import com.auth0.kmp.core.NetworkingConfiguration
+import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.error.Auth0Error
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
@@ -80,7 +81,12 @@ class AuthViewModel(domain: String, clientId: String) : ViewModel() {
         }
     }
 
-    fun login(email: String, password: String, realm: String) {
+    fun login(
+        email: String,
+        password: String,
+        realm: String,
+        options: RequestOptions = RequestOptions(),
+    ) {
         val client = client ?: return
         _state.value = LoginUiState.Loading
         viewModelScope.launch {
@@ -92,6 +98,7 @@ class AuthViewModel(domain: String, clientId: String) : ViewModel() {
                 realm = realm,
                 audience = audience,
                 scope = "openid profile email offline_access",
+                options = options,
             )
             _state.value = when (result) {
                 is Result.Success -> {

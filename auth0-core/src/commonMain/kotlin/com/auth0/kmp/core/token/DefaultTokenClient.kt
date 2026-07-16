@@ -7,6 +7,7 @@ import com.auth0.kmp.core.result.map
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.request.HttpMethod
 import com.auth0.kmp.networking.request.NetworkRequest
+import com.auth0.kmp.networking.retry.RetryPolicy
 import com.auth0.kmp.networking.transport.json
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -18,7 +19,8 @@ internal class DefaultTokenClient(
 ) : TokenClient {
     override suspend fun fetchToken(
         grant: TokenGrant,
-        headers: Map<String, String>
+        headers: Map<String, String>,
+        retryPolicy: RetryPolicy
     ): Result<Credentials, TransportError> {
         val body = json.encodeToString(
             MapSerializer(String.serializer(), String.serializer()),
@@ -32,7 +34,7 @@ internal class DefaultTokenClient(
             body = body
         )
 
-        return networkClient.request(request) {
+        return networkClient.request(request, retryPolicy) {
             json.decodeFromString<TokenResponse>(it)
         }.map { it.toCredentials(clock) }
     }

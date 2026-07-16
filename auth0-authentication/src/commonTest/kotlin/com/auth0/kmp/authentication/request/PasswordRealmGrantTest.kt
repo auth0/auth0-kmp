@@ -41,4 +41,37 @@ class PasswordRealmGrantTest {
 
         assertFalse(params.containsKey("audience"))
     }
+
+    @Test
+    fun extraParameters_appearInWireParameters() {
+        val params = PasswordRealmGrant(
+            usernameOrEmail = "user",
+            password = "pw",
+            realm = "db",
+            clientId = "client-123",
+            scope = "openid",
+            audience = null,
+            extraParameters = mapOf("organization" to "org_123"),
+        ).parameters
+
+        assertEquals("org_123", params["organization"])
+        assertEquals("http://auth0.com/oauth/grant-type/password-realm", params["grant_type"])
+        assertEquals("client-123", params["client_id"])
+    }
+
+    @Test
+    fun reservedKeys_notOverridableByExtraParameters() {
+        val params = PasswordRealmGrant(
+            usernameOrEmail = "user",
+            password = "pw",
+            realm = "db",
+            clientId = "client-123",
+            scope = "openid",
+            audience = null,
+            extraParameters = mapOf("grant_type" to "evil", "client_id" to "hacker"),
+        ).parameters
+
+        assertEquals("http://auth0.com/oauth/grant-type/password-realm", params["grant_type"])
+        assertEquals("client-123", params["client_id"])
+    }
 }

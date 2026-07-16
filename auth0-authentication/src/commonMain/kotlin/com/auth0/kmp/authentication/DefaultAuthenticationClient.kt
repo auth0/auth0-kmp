@@ -3,6 +3,7 @@ package com.auth0.kmp.authentication
 import com.auth0.kmp.authentication.error.AuthenticationError
 import com.auth0.kmp.authentication.error.toAuthenticationError
 import com.auth0.kmp.authentication.request.PasswordRealmGrant
+import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
@@ -22,7 +23,8 @@ internal class DefaultAuthenticationClient(
         password: String,
         realm: String,
         audience: String?,
-        scope: String
+        scope: String,
+        options: RequestOptions
     ): Result<Credentials, AuthenticationError> {
         if (usernameOrEmail.isBlank()) {
             return Result.Failure(AuthenticationError.InvalidInput("usernameOrEmail must not be blank"))
@@ -41,9 +43,14 @@ internal class DefaultAuthenticationClient(
             clientId = clientId,
             scope = scope,
             audience = audience,
+            extraParameters = options.parameters,
         )
 
-        return tokenClient.fetchToken(grant).fold({ data ->
+        return tokenClient.fetchToken(
+            grant,
+            headers = options.headers,
+            retryPolicy = options.retryPolicy,
+        ).fold({ data ->
             val validationError = idTokenValidator.validate(data.idToken)
             if (validationError != null) {
                 Result.Failure(AuthenticationError.IdTokenValidation(validationError))
