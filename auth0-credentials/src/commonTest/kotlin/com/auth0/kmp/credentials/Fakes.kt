@@ -5,6 +5,7 @@ import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.token.TokenClient
 import com.auth0.kmp.core.token.TokenGrant
+import com.auth0.kmp.networking.retry.RetryPolicy
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
@@ -48,15 +49,19 @@ internal class FakeTokenClient(
         private set
     var lastHeaders: Map<String, String>? = null
         private set
+    var lastRetryPolicy: RetryPolicy? = null
+        private set
 
     override suspend fun fetchToken(
         grant: TokenGrant,
         headers: Map<String, String>,
+        retryPolicy: RetryPolicy,
     ): Result<Credentials, TransportError> {
         delayGate?.withLock { }
         callCount++
         lastGrantParameters = grant.parameters
         lastHeaders = headers
+        lastRetryPolicy = retryPolicy
         return outcome
     }
 }
