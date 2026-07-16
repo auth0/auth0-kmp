@@ -17,9 +17,10 @@ import com.auth0.kmp.webauth.webAuthClient
  * Entry point to the Auth0 SDK for a single [Auth0Account].
  *
  * Owns one network transport shared by [webAuth], [authentication], and the
- * credentials managers from [credentials]. Clients are created on first access.
- * Call [close] to release the shared transport when this instance is no longer
- * needed.
+ * credentials managers from [credentials]. [webAuth] and [authentication] are
+ * cached and created on first access; [credentials] returns a new manager on
+ * each call. Call [close] to release the shared transport when this instance is
+ * no longer needed.
  *
  * @param account the tenant/application coordinates every client communicates with.
  */
@@ -53,6 +54,10 @@ public class Auth0 internal constructor(
      * Creates a credentials manager backed by the shared transport, persisting
      * under [storeKey] in the platform's default secure storage.
      *
+     * Unlike [webAuth] and [authentication], this returns a new manager on every
+     * call; it is not cached. All managers for the same [storeKey] read and write
+     * the same underlying store.
+     *
      * @param storeKey the key credentials are stored under; defaults to a key
      *   scoped to the account's client ID.
      */
@@ -64,6 +69,10 @@ public class Auth0 internal constructor(
     /**
      * Creates a credentials manager backed by the shared transport, persisting
      * under [storeKey] in the supplied [storage].
+     *
+     * Unlike [webAuth] and [authentication], this returns a new manager on every
+     * call; it is not cached. All managers for the same [storeKey] read and write
+     * the same underlying store.
      *
      * @param storeKey the key credentials are stored under.
      * @param storage the secure store to persist credentials in.
