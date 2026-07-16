@@ -130,7 +130,7 @@ final class AuthViewModel {
         options: RequestOptions = RequestOptions(
             parameters: [:],
             headers: [:],
-            retryPolicy: RetryPolicy.companion.None,
+            retryPolicy: RetryPolicy.companion.None
         )
     ) async {
         guard let client else { return }

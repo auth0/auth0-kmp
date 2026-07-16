@@ -12,8 +12,8 @@ import com.auth0.kmp.networking.retry.RetryPolicy
  *
  * @param parameters extra request parameters, sent in the endpoint's natural
  *   channel (form body for `POST /oauth/token`, query string for `GET`
- *   endpoints). Parameters set by the SDK for the operation take precedence over
- *   entries here with the same name.
+ *   endpoints). Reserved parameters populated by the SDK for the operation take
+ *   precedence over entries here with the same name.
  * @param headers extra request headers. Headers set by the SDK for the operation
  *   take precedence over entries here with the same name.
  * @param retryPolicy how the request is retried on failure. Prefer a [retryPolicy]
