@@ -9,7 +9,7 @@ package com.auth0.kmp.core
  *   created for this account.
  * @param useDPoP opt in to sender-constrained (DPoP) tokens for this account.
  */
-class Auth0Account(
+public data class Auth0Account(
     val clientId: String,
     val domain: String,
     val configuration: NetworkingConfiguration = NetworkingConfiguration(),

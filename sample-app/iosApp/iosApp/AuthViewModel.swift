@@ -69,8 +69,8 @@ final class AuthViewModel {
         // the Kotlin side defaults must be supplied explicitly here. These match
         // the SDK's Kotlin defaults (NetworkingConfiguration()).
         let configuration = NetworkingConfiguration(
-
-            enableLogging: true,
+            logLevel: .body,
+            logSensitiveValues: false,
             connectTimeoutMillis: 10_000,
             requestTimeoutMillis: 10_000,
             defaultHeaders: [:]

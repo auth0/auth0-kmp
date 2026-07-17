@@ -2,7 +2,6 @@ package com.auth0.kmp.webauth.transaction
 
 import com.auth0.kmp.webauth.pkce.Pkce
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertSame

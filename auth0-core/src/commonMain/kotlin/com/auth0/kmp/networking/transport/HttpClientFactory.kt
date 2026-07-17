@@ -1,5 +1,6 @@
 package com.auth0.kmp.networking.transport
 
+import com.auth0.kmp.core.NetworkLogLevel
 import com.auth0.kmp.core.NetworkingConfiguration
 import com.auth0.kmp.core.dpop.DPoPCollaborators
 import io.ktor.client.HttpClient
@@ -11,20 +12,30 @@ import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.LoggingFormat
 import io.ktor.client.plugins.logging.SIMPLE
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendIfNameAbsent
+
+private fun NetworkLogLevel.toKtor(): LogLevel = when (this) {
+    NetworkLogLevel.NONE -> LogLevel.NONE
+    NetworkLogLevel.BASIC -> LogLevel.INFO
+    NetworkLogLevel.HEADERS -> LogLevel.HEADERS
+    NetworkLogLevel.BODY -> LogLevel.ALL
+}
 
 internal fun buildHttpClient(
     config: NetworkingConfiguration,
     engineFactory: HttpClientEngineFactory<*> = httpEngineFactory(),
     dpopCollaborators: DPoPCollaborators? = null,
+    logger: Logger = Logger.SIMPLE,
 ): HttpClient =
-    HttpClient(engineFactory) { applyNetworkingConfig(config, dpopCollaborators) }
+    HttpClient(engineFactory) { applyNetworkingConfig(config, dpopCollaborators, logger) }
 
 internal fun HttpClientConfig<*>.applyNetworkingConfig(
     config: NetworkingConfiguration,
     dpopCollaborators: DPoPCollaborators? = null,
+    logger: Logger = Logger.SIMPLE,
 ) {
     expectSuccess = false
 
@@ -37,10 +48,11 @@ internal fun HttpClientConfig<*>.applyNetworkingConfig(
         json(json)
     }
 
-    if (config.enableLogging) {
+    if (config.logLevel != NetworkLogLevel.NONE) {
         install(Logging) {
-            logger = Logger.SIMPLE
-            level = LogLevel.INFO
+            this.logger = logger
+            format = LoggingFormat.OkHttp
+            level = config.logLevel.toKtor()
         }
     }
 

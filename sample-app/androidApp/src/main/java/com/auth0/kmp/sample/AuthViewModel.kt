@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.kmp.authentication.authenticationClient
 import com.auth0.kmp.core.Auth0Account
+import com.auth0.kmp.core.NetworkLogLevel
 import com.auth0.kmp.core.NetworkingConfiguration
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.error.Auth0Error
@@ -41,7 +42,7 @@ class AuthViewModel(domain: String, clientId: String) : ViewModel() {
         Auth0Account(
             clientId = clientId,
             domain = domain,
-            configuration = NetworkingConfiguration(enableLogging = true),
+            configuration = NetworkingConfiguration(logLevel = NetworkLogLevel.BODY),
         )
     } else {
         null

@@ -4,7 +4,6 @@ import kotlin.io.encoding.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 private val unpadded = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
 private val padded = Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT)

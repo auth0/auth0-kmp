@@ -3,9 +3,10 @@ package com.auth0.kmp.core
 /**
  * Configuration for the networking layer.
  *
- * @param enableLogging whether the HTTP request line, URL, and response status
- *   are logged. Bodies and headers are not logged, so credentials and tokens are
- *   never written to the log. Intended for debugging; defaults to `false`.
+ * @param logLevel how much of each HTTP exchange is logged; defaults to
+ *   [NetworkLogLevel.NONE]. Logs are emitted verbatim with no redaction, so
+ *   [NetworkLogLevel.HEADERS] and [NetworkLogLevel.BODY] reveal request body and headers.
+ *   Intended for local debugging only; never enable in production.
  * @param connectTimeoutMillis time allowed to establish a connection, in
  *   milliseconds.
  * @param requestTimeoutMillis time allowed for the full request to complete, in
@@ -15,7 +16,7 @@ package com.auth0.kmp.core
  *   both, the request's value overrides the default.
  */
 public data class NetworkingConfiguration(
-    val enableLogging: Boolean = false,
+    val logLevel: NetworkLogLevel = NetworkLogLevel.NONE,
     val connectTimeoutMillis: Long = 10_000,
     val requestTimeoutMillis: Long = 10_000,
     val defaultHeaders: Map<String, String> = emptyMap()
