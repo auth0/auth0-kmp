@@ -43,13 +43,32 @@ private struct AuthFlowView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ChooseSignInView(
-                onEmbeddedLogin: { path.append(.embeddedLogin) },
+                state: viewModel.state,
+                onEmbeddedLogin: { path.append(.embeddedMethods) },
                 onWebAuthLogin: { Task { await viewModel.webLogin() } }
             )
                 .navigationDestination(for: Route.self) { route in
                     switch route {
+                    case .embeddedMethods:
+                        EmbeddedMethodsView(
+                            onPasswordLogin: { path.append(.embeddedLogin) },
+                            onSignup: {
+                                viewModel.resetSignup()
+                                path.append(.signup)
+                            },
+                            onPasskeySignup: { path.append(.passkeySignup) },
+                            onPasskeyLogin: { path.append(.passkeyLogin) }
+                        )
                     case .embeddedLogin:
                         EmbeddedLoginView(viewModel: viewModel, isConfigured: viewModel.isConfigured)
+                    case .signup:
+                        SignupView(viewModel: viewModel, isConfigured: viewModel.isConfigured)
+                    case .signupResult:
+                        SignupResultView(viewModel: viewModel)
+                    case .passkeySignup:
+                        PasskeySignupView(viewModel: viewModel, isConfigured: viewModel.isConfigured)
+                    case .passkeyLogin:
+                        PasskeyLoginView(viewModel: viewModel, isConfigured: viewModel.isConfigured)
                     case .welcome:
                         WelcomeView(viewModel: viewModel)
                     }
@@ -65,6 +84,14 @@ private struct AuthFlowView: View {
                 path.removeAll()
             default:
                 break
+            }
+        }
+        // A successful createUser lands on the confirmation screen. It mints no
+        // tokens, so login state is untouched and this is the only thing that
+        // navigates there.
+        .onChange(of: viewModel.signupState) { _, newState in
+            if case .success = newState, path.last != .signupResult {
+                path.append(.signupResult)
             }
         }
         // Cover the chooser with a splash while the Keychain check runs, so the

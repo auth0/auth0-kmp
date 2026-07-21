@@ -8,6 +8,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -15,6 +17,8 @@ import kotlin.test.assertNull
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
+
+private fun JsonObject.str(key: String): String? = this[key]?.jsonPrimitive?.content
 
 class DefaultCredentialsManagerTest {
 
@@ -145,9 +149,9 @@ class DefaultCredentialsManagerTest {
         assertIs<Result.Success<Credentials>>(result)
         assertEquals(renewed, result.data)
         assertEquals(1, tokenClient.callCount)
-        assertEquals("refresh_token", tokenClient.lastGrantParameters?.get("grant_type"))
-        assertEquals("stored-rt", tokenClient.lastGrantParameters?.get("refresh_token"))
-        assertEquals("api", tokenClient.lastGrantParameters?.get("audience"))
+        assertEquals("refresh_token", tokenClient.lastGrantParameters?.str("grant_type"))
+        assertEquals("stored-rt", tokenClient.lastGrantParameters?.str("refresh_token"))
+        assertEquals("api", tokenClient.lastGrantParameters?.str("audience"))
         assertEquals(renewed, CredentialsSerializer.decode(storage.retrieve(storeKey)!!).credentials)
     }
 

@@ -37,9 +37,40 @@ final class AuthViewModel {
     enum LoginMethod {
         case embedded
         case webAuth
+        case passkey
+    }
+
+    // Sign-up outcome, kept separate from `State` on purpose: createUser mints no
+    // tokens, so a successful sign-up must NOT trip the global success→Welcome
+    // navigation. This drives its own screen (the confirmation) instead.
+    enum SignupState: Equatable {
+        case idle
+        case loading
+        case success(DatabaseUser)
+        case failure(any Auth0Error)
+
+        static func == (lhs: SignupState, rhs: SignupState) -> Bool {
+            switch (lhs, rhs) {
+            case (.idle, .idle), (.loading, .loading):
+                return true
+            case let (.success(l), .success(r)):
+                return l == r
+            case let (.failure(l), .failure(r)):
+                return (l as? NSObjectProtocol)?.isEqual(r) ?? false
+            default:
+                return false
+            }
+        }
     }
 
     private(set) var state: State = .restoring
+
+    private(set) var signupState: SignupState = .idle
+
+    // Remembers the credentials entered on the sign-up screen so the confirmation
+    // screen's "Log in" button can complete the sign-up → login hop without asking
+    // the user to retype them. Cleared by resetSignup().
+    private var lastSignup: (email: String, password: String, connection: String)?
 
     // Tracks how the current session was established, so logout only performs the
     // browser round-trip for Web Auth sessions (embedded login holds no SSO cookie).
@@ -70,7 +101,6 @@ final class AuthViewModel {
         // the SDK's Kotlin defaults (NetworkingConfiguration()).
         let configuration = NetworkingConfiguration(
             logLevel: .body,
-            logSensitiveValues: false,
             connectTimeoutMillis: 10_000,
             requestTimeoutMillis: 10_000,
             defaultHeaders: [:]
@@ -211,6 +241,219 @@ final class AuthViewModel {
                  } catch {
                      state = .idle
                  }
+    }
+
+    // Creates a database user. On success we land on the confirmation screen
+    // (via signupState); createUser returns a DatabaseUser, not tokens, so the
+    // login state is untouched and the user explicitly opts into logging in next.
+    func createUser(email: String, password: String, connection: String) async {
+        guard let client else { return }
+        signupState = .loading
+        do {
+            let result = try await client.createUser(
+                profile: SignupProfile(
+                    email: email,
+                    phoneNumber: nil,
+                    username: nil,
+                    name: nil,
+                    givenName: nil,
+                    familyName: nil,
+                    nickname: nil,
+                    picture: nil
+                ),
+                password: password,
+                connection: connection,
+                userMetadata: [:],
+                options: defaultOptions()
+            )
+            switch onEnum(of: result) {
+            case .success(let success):
+                if let user = success.data as? DatabaseUser {
+                    lastSignup = (email, password, connection)
+                    signupState = .success(user)
+                } else {
+                    signupState = .idle
+                }
+            case .failure(let failure):
+                if let error = failure.error as? AuthenticationError {
+                    signupState = .failure(error)
+                } else {
+                    signupState = .idle
+                }
+            }
+        } catch {
+            signupState = .idle
+        }
+    }
+
+    // Completes the sign-up → login hop using the credentials captured by
+    // createUser. Delegates to login(), so a success flows through the normal
+    // success→Welcome navigation.
+    func completeSignupLogin() async {
+        guard let signup = lastSignup else { return }
+        await login(email: signup.email, password: signup.password, realm: signup.connection)
+    }
+
+    // Resets the sign-up screen before it is shown, so a stale confirmation from a
+    // previous attempt never appears.
+    func resetSignup() {
+        signupState = .idle
+        lastSignup = nil
+    }
+
+    // Passkey sign-up. The SDK is HTTP-only for passkeys, so the ceremony (the
+    // Face ID sheet + new-passkey creation) is injected as a closure the caller
+    // builds from the platform. Flow: signup challenge → run ceremony → send the
+    // registration credential + the challenge's auth_session straight to
+    // loginWithPasskey (no separate login challenge — verified against Auth0.Android).
+    func passkeySignup(
+        email: String,
+        connection: String,
+        runCeremony: (AuthnParamsPublicKey) async throws -> PublicKeyCredentials
+    ) async {
+        guard let client else { return }
+        state = .loading
+        do {
+            let challengeResult = try await client.passkeySignupChallenge(
+                profile: SignupProfile(
+                    email: email,
+                    phoneNumber: nil,
+                    username: nil,
+                    name: nil,
+                    givenName: nil,
+                    familyName: nil,
+                    nickname: nil,
+                    picture: nil
+                ),
+                userMetadata: [:],
+                realm: connection,
+                organization: nil,
+                options: defaultOptions()
+            )
+            let challenge: PasskeyRegistrationChallenge
+            switch onEnum(of: challengeResult) {
+            case .success(let success):
+                guard let value = success.data as? PasskeyRegistrationChallenge else {
+                    state = .idle
+                    return
+                }
+                challenge = value
+            case .failure(let failure):
+                state = (failure.error as? AuthenticationError).map(State.failure) ?? .idle
+                return
+            }
+
+            let credential: PublicKeyCredentials
+            do {
+                credential = try await runCeremony(challenge.authParamsPublicKey)
+            } catch let error as Auth0Error {
+                state = .failure(error)
+                return
+            } catch {
+                state = .idle
+                return
+            }
+
+            await finishPasskeyLogin(
+                authSession: challenge.authSession,
+                credential: credential,
+                realm: connection
+            )
+        } catch {
+            state = .idle
+        }
+    }
+
+    // Passkey login. Same shape as sign-up but with the login challenge and an
+    // existing passkey; the assertion + auth_session go to loginWithPasskey.
+    func passkeyLogin(
+        connection: String,
+        runCeremony: (AuthParamsPublicKey) async throws -> PublicKeyCredentials
+    ) async {
+        guard let client else { return }
+        state = .loading
+        do {
+            let challengeResult = try await client.passkeyLoginChallenge(
+                realm: connection,
+                organization: nil,
+                options: defaultOptions()
+            )
+            let challenge: PasskeyLoginChallenge
+            switch onEnum(of: challengeResult) {
+            case .success(let success):
+                guard let value = success.data as? PasskeyLoginChallenge else {
+                    state = .idle
+                    return
+                }
+                challenge = value
+            case .failure(let failure):
+                state = (failure.error as? AuthenticationError).map(State.failure) ?? .idle
+                return
+            }
+
+            let credential: PublicKeyCredentials
+            do {
+                credential = try await runCeremony(challenge.authParamsPublicKey)
+            } catch let error as Auth0Error {
+                state = .failure(error)
+                return
+            } catch {
+                state = .idle
+                return
+            }
+
+            await finishPasskeyLogin(
+                authSession: challenge.authSession,
+                credential: credential,
+                realm: connection
+            )
+        } catch {
+            state = .idle
+        }
+    }
+
+    // Shared tail of both passkey flows: exchange the platform credential for
+    // tokens. A passkey session is a local session (no browser cookie), so logout
+    // treats it like embedded — hence loginMethod = .passkey.
+    private func finishPasskeyLogin(
+        authSession: String,
+        credential: PublicKeyCredentials,
+        realm: String
+    ) async {
+        guard let client else { return }
+        do {
+            let result = try await client.loginWithPasskey(
+                authSession: authSession,
+                authResponse: credential,
+                realm: realm,
+                organization: nil,
+                options: defaultOptions()
+            )
+            switch onEnum(of: result) {
+            case .success(let success):
+                if let credentials = success.data as? Credentials {
+                    loginMethod = .passkey
+                    await saveCredentials(credentials)
+                    state = .success(credentials)
+                } else {
+                    state = .idle
+                }
+            case .failure(let failure):
+                state = (failure.error as? AuthenticationError).map(State.failure) ?? .idle
+            }
+        } catch {
+            state = .idle
+        }
+    }
+
+    // The SDK's RequestOptions default cannot cross from Kotlin into Swift, so
+    // this rebuilds it explicitly — matching the login() parameter above.
+    private func defaultOptions() -> RequestOptions {
+        RequestOptions(
+            parameters: [:],
+            headers: [:],
+            retryPolicy: RetryPolicy.companion.None
+        )
     }
 
     func logout() {

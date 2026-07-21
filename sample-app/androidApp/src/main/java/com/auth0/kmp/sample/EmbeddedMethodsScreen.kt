@@ -1,33 +1,30 @@
 package com.auth0.kmp.sample
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ChooseSignInScreen(
-    state: LoginUiState,
-    onEmbeddedLogin: () -> Unit,
-    onWebAuthLogin: () -> Unit,
+fun EmbeddedMethodsScreen(
+    onPasswordLogin: () -> Unit,
+    onSignup: () -> Unit,
+    onPasskeySignup: () -> Unit,
+    onPasskeyLogin: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -36,12 +33,8 @@ fun ChooseSignInScreen(
             .padding(top = Spacing.xl, bottom = Spacing.lg),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        BrandBadge()
-
-        Spacer(Modifier.height(Spacing.lg))
-
         Text(
-            text = "Choose how to sign in",
+            text = "Embedded login",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
@@ -49,67 +42,49 @@ fun ChooseSignInScreen(
 
         Spacer(Modifier.height(Spacing.xl))
 
-        OptionCard(
-            title = "Embedded Login",
-            description = "Total brand control and low user friction",
-            onClick = onEmbeddedLogin,
+        MethodCard(
+            title = "Password login",
+            description = "Sign in with email and password",
+            onClick = onPasswordLogin,
         )
 
         Spacer(Modifier.height(Spacing.md))
 
-        OptionCard(
-            title = "Web Auth",
-            description = "Hosted Universal Login in a secure browser tab",
-            onClick = onWebAuthLogin,
+        MethodCard(
+            title = "Sign up",
+            description = "Create a new database user",
+            onClick = onSignup,
         )
 
-        // Web Auth runs from this screen (no dedicated screen navigates away on
-        // failure), so surface its error here — otherwise a cancelled or failed
-        // browser round-trip leaves the user on the chooser with no explanation.
-        if (state is LoginUiState.Failure) {
-            Spacer(Modifier.height(Spacing.lg))
-            Text(
-                text = state.error.toString(),
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-    }
-}
+        Spacer(Modifier.height(Spacing.md))
 
-@Composable
-private fun BrandBadge() {
-    Box(
-        modifier = Modifier
-            .size(56.dp)
-            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(Sizes.cornerLarge)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "A0",
-            color = MaterialTheme.colorScheme.onPrimary,
-            fontWeight = FontWeight.Bold,
+        MethodCard(
+            title = "Passkey sign up",
+            description = "Register a passkey on this device",
+            onClick = onPasskeySignup,
+        )
+
+        Spacer(Modifier.height(Spacing.md))
+
+        MethodCard(
+            title = "Passkey login",
+            description = "Sign in with an existing passkey",
+            onClick = onPasskeyLogin,
         )
     }
 }
 
 @Composable
-private fun OptionCard(
-    title: String,
-    description: String,
-    enabled: Boolean = true,
-    onClick: () -> Unit = {},
-) {
+private fun MethodCard(title: String, description: String, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(if (enabled) 1f else 0.5f)
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outline,
                 shape = RoundedCornerShape(Sizes.cornerLarge),
             )
-            .let { if (enabled) it.clickable(onClick = onClick) else it }
+            .clickable(onClick = onClick)
             .padding(Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {

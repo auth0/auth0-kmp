@@ -2,6 +2,12 @@ package com.auth0.kmp
 
 import com.auth0.kmp.authentication.AuthenticationClient
 import com.auth0.kmp.authentication.error.AuthenticationError
+import com.auth0.kmp.authentication.model.DatabaseUser
+import com.auth0.kmp.authentication.model.PasskeyLoginChallenge
+import com.auth0.kmp.authentication.model.PasskeyRegistrationChallenge
+import com.auth0.kmp.authentication.model.PublicKeyCredentials
+import com.auth0.kmp.authentication.model.SignupProfile
+import com.auth0.kmp.authentication.model.UserProfile
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.credentials.CredentialsManager
@@ -52,6 +58,62 @@ private class FakeAuthenticationClient : AuthenticationClient {
         usernameOrEmail: String,
         password: String,
         realm: String,
+        audience: String?,
+        scope: String,
+        options: RequestOptions,
+    ): Result<Credentials, AuthenticationError> = error("not used")
+
+    override suspend fun createUser(
+        profile: SignupProfile,
+        password: String,
+        connection: String,
+        userMetadata: Map<String, String>,
+        options: RequestOptions,
+    ): Result<DatabaseUser, AuthenticationError> = error("not used")
+
+    override suspend fun resetPassword(
+        email: String,
+        connection: String,
+        options: RequestOptions,
+    ): Result<Unit, AuthenticationError> = error("not used")
+
+    override suspend fun userInfo(
+        accessToken: String,
+        tokenType: String,
+        options: RequestOptions,
+    ): Result<UserProfile, AuthenticationError> = error("not used")
+
+    override suspend fun revoke(
+        refreshToken: String,
+        options: RequestOptions,
+    ): Result<Unit, AuthenticationError> = error("not used")
+
+    override suspend fun renew(
+        refreshToken: String,
+        audience: String?,
+        scope: String?,
+        options: RequestOptions,
+    ): Result<Credentials, AuthenticationError> = error("not used")
+
+    override suspend fun passkeyLoginChallenge(
+        realm: String?,
+        organization: String?,
+        options: RequestOptions,
+    ): Result<PasskeyLoginChallenge, AuthenticationError> = error("not used")
+
+    override suspend fun passkeySignupChallenge(
+        profile: SignupProfile,
+        userMetadata: Map<String, String>,
+        realm: String?,
+        organization: String?,
+        options: RequestOptions,
+    ): Result<PasskeyRegistrationChallenge, AuthenticationError> = error("not used")
+
+    override suspend fun loginWithPasskey(
+        authSession: String,
+        authResponse: PublicKeyCredentials,
+        realm: String?,
+        organization: String?,
         audience: String?,
         scope: String,
         options: RequestOptions,

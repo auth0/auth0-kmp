@@ -9,6 +9,11 @@
 //
 
 enum Route: Hashable {
+    case embeddedMethods
     case embeddedLogin
+    case signup
+    case signupResult
+    case passkeySignup
+    case passkeyLogin
     case welcome
 }

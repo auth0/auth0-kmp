@@ -24,12 +24,16 @@ import com.auth0.kmp.webauth.validation.IdTokenSignatureValidator
 import io.ktor.http.Url
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+
+private fun JsonObject.str(key: String): String? = this[key]?.jsonPrimitive?.content
 
 private const val ID_TOKEN = "header.payload.signature"
 private const val REDIRECT_URI = "myapp://test.auth0.com/android/com.example/callback"
@@ -292,12 +296,12 @@ class DefaultWebAuthClientTest {
         val f = fixture()
         f.client.login()
         val params = f.tokenClient.lastGrant!!.parameters
-        assertEquals("authorization_code", params["grant_type"])
-        assertEquals("cid", params["client_id"])
-        assertEquals("the-code", params["code"])
-        assertEquals(REDIRECT_URI, params["redirect_uri"])
+        assertEquals("authorization_code", params.str("grant_type"))
+        assertEquals("cid", params.str("client_id"))
+        assertEquals("the-code", params.str("code"))
+        assertEquals(REDIRECT_URI, params.str("redirect_uri"))
         // code_verifier comes from the transaction's freshly generated PKCE
-        assertTrue(!params["code_verifier"].isNullOrBlank(), "code_verifier missing")
+        assertTrue(!params.str("code_verifier").isNullOrBlank(), "code_verifier missing")
     }
 
     @Test

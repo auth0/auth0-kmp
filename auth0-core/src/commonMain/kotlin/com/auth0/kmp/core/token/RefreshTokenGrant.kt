@@ -1,29 +1,24 @@
-package com.auth0.kmp.authentication.request
+package com.auth0.kmp.core.token
 
 import com.auth0.kmp.core.annotation.InternalAuth0Api
-import com.auth0.kmp.core.token.TokenGrant
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-@OptIn(InternalAuth0Api::class)
-internal class PasswordRealmGrant(
-    usernameOrEmail: String,
-    password: String,
-    realm: String,
+@InternalAuth0Api
+public class RefreshTokenGrant(
+    refreshToken: String,
     clientId: String,
-    scope: String,
-    audience: String?,
+    scope: String? = null,
+    audience: String? = null,
     extraParameters: Map<String, String> = emptyMap(),
 ) : TokenGrant {
     override val parameters: JsonObject = buildJsonObject {
         extraParameters.forEach { (key, value) -> put(key, value) }
-        put("grant_type", "http://auth0.com/oauth/grant-type/password-realm")
+        put("grant_type", "refresh_token")
         put("client_id", clientId)
-        put("username", usernameOrEmail)
-        put("password", password)
-        put("realm", realm)
-        put("scope", scope)
+        put("refresh_token", refreshToken)
+        scope?.let { put("scope", it) }
         audience?.let { put("audience", it) }
     }
 }

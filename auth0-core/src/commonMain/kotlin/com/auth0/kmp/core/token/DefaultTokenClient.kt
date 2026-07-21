@@ -9,8 +9,6 @@ import com.auth0.kmp.networking.request.HttpMethod
 import com.auth0.kmp.networking.request.NetworkRequest
 import com.auth0.kmp.networking.retry.RetryPolicy
 import com.auth0.kmp.networking.transport.json
-import kotlinx.serialization.builtins.MapSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlin.time.Clock
 
 internal class DefaultTokenClient(
@@ -22,10 +20,7 @@ internal class DefaultTokenClient(
         headers: Map<String, String>,
         retryPolicy: RetryPolicy
     ): Result<Credentials, TransportError> {
-        val body = json.encodeToString(
-            MapSerializer(String.serializer(), String.serializer()),
-            grant.parameters
-        )
+        val body = json.encodeToString(grant.parameters)
 
         val request = NetworkRequest(
             method = HttpMethod.POST,

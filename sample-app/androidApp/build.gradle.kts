@@ -22,7 +22,10 @@ android {
 
     defaultConfig {
         applicationId = "com.auth0.kmp.sample"
-        minSdk = libs.versions.android.minSdk.get().toInt()
+        // Passkeys go through the AndroidX Credential Manager, whose
+        // createCredential/getCredential APIs require API 28+. The SDK modules
+        // keep the catalog's lower minSdk; only this dogfooding app raises it.
+        minSdk = 28
         targetSdk = libs.versions.android.compileSdk.get().toInt()
         versionCode = 1
         versionName = "0.0.1"
@@ -66,6 +69,13 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.5")
     // Provides the @Serializable annotation used by the type-safe nav routes.
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.11.0")
+    // Serializes the SDK's passkey challenge/response models to and from the
+    // W3C JSON the Credential Manager ceremony consumes and produces.
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+    // Runs the on-device WebAuthn passkey ceremony (create/get credential). The
+    // SDK is HTTP-only for passkeys, so the sample owns the platform ceremony.
+    implementation("androidx.credentials:credentials:1.6.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
 
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.ui:ui")

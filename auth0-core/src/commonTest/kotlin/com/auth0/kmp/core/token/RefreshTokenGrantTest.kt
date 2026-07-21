@@ -1,7 +1,11 @@
-package com.auth0.kmp.credentials
+package com.auth0.kmp.core.token
 
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+
+private fun JsonObject.str(key: String): String? = this[key]?.jsonPrimitive?.content
 
 class RefreshTokenGrantTest {
 
@@ -14,11 +18,11 @@ class RefreshTokenGrantTest {
             audience = "https://api",
         ).parameters
 
-        assertEquals("refresh_token", params["grant_type"])
-        assertEquals("cid", params["client_id"])
-        assertEquals("rt", params["refresh_token"])
-        assertEquals("openid profile", params["scope"])
-        assertEquals("https://api", params["audience"])
+        assertEquals("refresh_token", params.str("grant_type"))
+        assertEquals("cid", params.str("client_id"))
+        assertEquals("rt", params.str("refresh_token"))
+        assertEquals("openid profile", params.str("scope"))
+        assertEquals("https://api", params.str("audience"))
     }
 
     @Test
@@ -30,30 +34,30 @@ class RefreshTokenGrantTest {
     }
 
     @Test
-    fun extraParams_cannot_override_reserved_keys() {
+    fun extraParameters_cannot_override_reserved_keys() {
         val params = RefreshTokenGrant(
             refreshToken = "rt",
             clientId = "cid",
-            extraParams = mapOf(
+            extraParameters = mapOf(
                 "grant_type" to "malicious",
                 "client_id" to "spoofed",
                 "refresh_token" to "spoofed",
             ),
         ).parameters
 
-        assertEquals("refresh_token", params["grant_type"])
-        assertEquals("cid", params["client_id"])
-        assertEquals("rt", params["refresh_token"])
+        assertEquals("refresh_token", params.str("grant_type"))
+        assertEquals("cid", params.str("client_id"))
+        assertEquals("rt", params.str("refresh_token"))
     }
 
     @Test
-    fun extraParams_non_reserved_keys_pass_through() {
+    fun extraParameters_non_reserved_keys_pass_through() {
         val params = RefreshTokenGrant(
             refreshToken = "rt",
             clientId = "cid",
-            extraParams = mapOf("custom" to "value"),
+            extraParameters = mapOf("custom" to "value"),
         ).parameters
 
-        assertEquals("value", params["custom"])
+        assertEquals("value", params.str("custom"))
     }
 }

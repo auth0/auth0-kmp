@@ -8,6 +8,7 @@ import com.auth0.kmp.core.token.TokenGrant
 import com.auth0.kmp.networking.retry.RetryPolicy
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.JsonObject
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -45,7 +46,7 @@ internal class FakeTokenClient(
 ) : TokenClient {
     var callCount = 0
         private set
-    var lastGrantParameters: Map<String, String>? = null
+    var lastGrantParameters: JsonObject? = null
         private set
     var lastHeaders: Map<String, String>? = null
         private set

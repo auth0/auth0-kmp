@@ -1,9 +1,13 @@
 package com.auth0.kmp.authentication.request
 
 import com.auth0.kmp.core.annotation.InternalAuth0Api
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+
+private fun JsonObject.str(key: String): String? = this[key]?.jsonPrimitive?.content
 
 @OptIn(InternalAuth0Api::class)
 class PasswordRealmGrantTest {
@@ -19,13 +23,13 @@ class PasswordRealmGrantTest {
             audience = "https://api",
         ).parameters
 
-        assertEquals("http://auth0.com/oauth/grant-type/password-realm", params["grant_type"])
-        assertEquals("client-123", params["client_id"])
-        assertEquals("user", params["username"])
-        assertEquals("pw", params["password"])
-        assertEquals("db", params["realm"])
-        assertEquals("openid profile", params["scope"])
-        assertEquals("https://api", params["audience"])
+        assertEquals("http://auth0.com/oauth/grant-type/password-realm", params.str("grant_type"))
+        assertEquals("client-123", params.str("client_id"))
+        assertEquals("user", params.str("username"))
+        assertEquals("pw", params.str("password"))
+        assertEquals("db", params.str("realm"))
+        assertEquals("openid profile", params.str("scope"))
+        assertEquals("https://api", params.str("audience"))
     }
 
     @Test
@@ -54,9 +58,9 @@ class PasswordRealmGrantTest {
             extraParameters = mapOf("organization" to "org_123"),
         ).parameters
 
-        assertEquals("org_123", params["organization"])
-        assertEquals("http://auth0.com/oauth/grant-type/password-realm", params["grant_type"])
-        assertEquals("client-123", params["client_id"])
+        assertEquals("org_123", params.str("organization"))
+        assertEquals("http://auth0.com/oauth/grant-type/password-realm", params.str("grant_type"))
+        assertEquals("client-123", params.str("client_id"))
     }
 
     @Test
@@ -78,12 +82,12 @@ class PasswordRealmGrantTest {
             ),
         ).parameters
 
-        assertEquals("http://auth0.com/oauth/grant-type/password-realm", params["grant_type"])
-        assertEquals("client-123", params["client_id"])
-        assertEquals("user", params["username"])
-        assertEquals("pw", params["password"])
-        assertEquals("db", params["realm"])
-        assertEquals("openid", params["scope"])
+        assertEquals("http://auth0.com/oauth/grant-type/password-realm", params.str("grant_type"))
+        assertEquals("client-123", params.str("client_id"))
+        assertEquals("user", params.str("username"))
+        assertEquals("pw", params.str("password"))
+        assertEquals("db", params.str("realm"))
+        assertEquals("openid", params.str("scope"))
     }
 
     @Test
@@ -98,7 +102,7 @@ class PasswordRealmGrantTest {
             extraParameters = mapOf("audience" to "https://from-extra"),
         ).parameters
 
-        assertEquals("https://from-extra", params["audience"])
+        assertEquals("https://from-extra", params.str("audience"))
     }
 
     @Test
@@ -113,6 +117,6 @@ class PasswordRealmGrantTest {
             extraParameters = mapOf("audience" to "https://from-extra"),
         ).parameters
 
-        assertEquals("https://typed", params["audience"])
+        assertEquals("https://typed", params.str("audience"))
     }
 }

@@ -35,6 +35,7 @@ public fun authenticationClient(
             audience = account.clientId,
             clock = clock,
         ),
+        networkClient = networkClient,
     )
 }
 

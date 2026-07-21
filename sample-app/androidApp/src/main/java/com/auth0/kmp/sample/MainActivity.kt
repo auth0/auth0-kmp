@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
                 Surface {
                     val navController = rememberNavController()
                     val state by viewModel.state.collectAsState()
+                    val signupState by viewModel.signupState.collectAsState()
 
                     LaunchedEffect(Unit) {
                         viewModel.restoreSession()
@@ -55,14 +56,34 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // A successful createUser lands on the confirmation screen (it
+                    // mints no tokens, so login state is untouched).
+                    LaunchedEffect(signupState) {
+                        if (signupState is SignupUiState.Success) {
+                            navController.navigate(SignupResult) { launchSingleTop = true }
+                        }
+                    }
+
                     NavHost(navController = navController, startDestination = Splash) {
                         composable<Splash> {
                             SplashScreen()
                         }
                         composable<Chooser> {
                             ChooseSignInScreen(
-                                onEmbeddedLogin = { navController.navigate(EmbeddedLogin) },
+                                state = state,
+                                onEmbeddedLogin = { navController.navigate(EmbeddedMethods) },
                                 onWebAuthLogin = viewModel::webLogin,
+                            )
+                        }
+                        composable<EmbeddedMethods> {
+                            EmbeddedMethodsScreen(
+                                onPasswordLogin = { navController.navigate(EmbeddedLogin) },
+                                onSignup = {
+                                    viewModel.resetSignup()
+                                    navController.navigate(Signup)
+                                },
+                                onPasskeySignup = { navController.navigate(PasskeySignup) },
+                                onPasskeyLogin = { navController.navigate(PasskeyLogin) },
                             )
                         }
                         composable<EmbeddedLogin> {
@@ -70,6 +91,36 @@ class MainActivity : ComponentActivity() {
                                 state = state,
                                 isConfigured = viewModel.isConfigured,
                                 onLogin = viewModel::login,
+                            )
+                        }
+                        composable<Signup> {
+                            SignupScreen(
+                                state = signupState,
+                                isConfigured = viewModel.isConfigured,
+                                onSignup = viewModel::createUser,
+                            )
+                        }
+                        composable<SignupResult> {
+                            val user = (signupState as? SignupUiState.Success)?.user
+                            if (user != null) {
+                                SignupResultScreen(
+                                    user = user,
+                                    onLogIn = viewModel::completeSignupLogin,
+                                )
+                            }
+                        }
+                        composable<PasskeySignup> {
+                            PasskeySignupScreen(
+                                state = state,
+                                isConfigured = viewModel.isConfigured,
+                                onRegister = viewModel::passkeySignup,
+                            )
+                        }
+                        composable<PasskeyLogin> {
+                            PasskeyLoginScreen(
+                                state = state,
+                                isConfigured = viewModel.isConfigured,
+                                onSignIn = viewModel::passkeyLogin,
                             )
                         }
                         composable<Welcome> {

@@ -3,6 +3,11 @@ package com.auth0.kmp.sample
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.kmp.authentication.authenticationClient
+import com.auth0.kmp.authentication.model.AuthParamsPublicKey
+import com.auth0.kmp.authentication.model.AuthnParamsPublicKey
+import com.auth0.kmp.authentication.model.DatabaseUser
+import com.auth0.kmp.authentication.model.PublicKeyCredentials
+import com.auth0.kmp.authentication.model.SignupProfile
 import com.auth0.kmp.core.Auth0Account
 import com.auth0.kmp.core.NetworkLogLevel
 import com.auth0.kmp.core.NetworkingConfiguration
@@ -29,7 +34,24 @@ sealed interface LoginUiState {
     data class Failure(val error: Auth0Error) : LoginUiState
 }
 
-private enum class LoginMethod { Embedded, WebAuth }
+// Drives the sign-up screen only. Kept separate from LoginUiState so a successful
+// createUser (which does NOT mint tokens) doesn't trip the global Success->Welcome
+// navigation; the confirmation screen shows the DatabaseUser, then the user opts
+// in to logging in.
+sealed interface SignupUiState {
+    data object Idle : SignupUiState
+    data object Loading : SignupUiState
+    data class Success(val user: DatabaseUser) : SignupUiState
+    data class Failure(val error: Auth0Error) : SignupUiState
+}
+
+private enum class LoginMethod { Embedded, WebAuth, Passkey }
+
+// Wraps a non-Auth0 failure (a cancelled/failed passkey ceremony) as an Auth0Error
+// so the shared Failure states can render it via toString(), like SDK errors.
+private data class CeremonyError(val message: String) : Auth0Error {
+    override fun toString(): String = message
+}
 
 class AuthViewModel(domain: String, clientId: String) : ViewModel() {
 
@@ -55,6 +77,13 @@ class AuthViewModel(domain: String, clientId: String) : ViewModel() {
 
     private val _state = MutableStateFlow<LoginUiState>(LoginUiState.Restoring)
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
+
+    private val _signupState = MutableStateFlow<SignupUiState>(SignupUiState.Idle)
+    val signupState: StateFlow<SignupUiState> = _signupState.asStateFlow()
+
+    // Retains the sign-up inputs so the confirmation screen's "Log in" can auto-
+    // authenticate the just-created user without re-prompting for a password.
+    private var lastSignup: Triple<String, String, String>? = null
 
     // Tracks how the current session was established, so logout only performs the
     // browser round-trip for Web Auth sessions (embedded login holds no SSO cookie).
@@ -109,6 +138,143 @@ class AuthViewModel(domain: String, clientId: String) : ViewModel() {
                 }
 
                 is Result.Failure -> LoginUiState.Failure(result.error)
+            }
+        }
+    }
+
+    // Creates a database user, then parks the result on the confirmation screen.
+    // No tokens are issued here (createUser returns a DatabaseUser, not
+    // Credentials), so the session state is untouched; the user chooses to log in
+    // next via completeSignupLogin().
+    fun createUser(
+        email: String,
+        password: String,
+        connection: String,
+        options: RequestOptions = RequestOptions(),
+    ) {
+        val client = client ?: return
+        _signupState.value = SignupUiState.Loading
+        viewModelScope.launch {
+            val result = client.createUser(
+                profile = SignupProfile(email = email),
+                password = password,
+                connection = connection,
+                options = options,
+            )
+            _signupState.value = when (result) {
+                is Result.Success -> {
+                    lastSignup = Triple(email, password, connection)
+                    SignupUiState.Success(result.data)
+                }
+
+                is Result.Failure -> SignupUiState.Failure(result.error)
+            }
+        }
+    }
+
+    // Logs in the user that was just created, reusing the retained sign-up inputs.
+    // Drives the shared LoginUiState so success navigates to Welcome like any login.
+    fun completeSignupLogin() {
+        val (email, password, connection) = lastSignup ?: return
+        login(email = email, password = password, realm = connection)
+    }
+
+    fun resetSignup() {
+        _signupState.value = SignupUiState.Idle
+        lastSignup = null
+    }
+
+    // Registers a passkey, then mints tokens by sending the registration credential
+    // and the signup's auth_session straight to the passkey token grant — no
+    // separate login challenge (mirrors Auth0.Android's signup->signinWithPasskey).
+    // runCeremony is supplied by the screen because the WebAuthn UI must be anchored
+    // to an Activity.
+    fun passkeySignup(
+        email: String,
+        connection: String,
+        runCeremony: suspend (AuthnParamsPublicKey) -> PublicKeyCredentials,
+    ) {
+        val client = client ?: return
+        _state.value = LoginUiState.Loading
+        viewModelScope.launch {
+            val challenge = client.passkeySignupChallenge(
+                profile = SignupProfile(email = email),
+                realm = connection,
+            )
+            when (challenge) {
+                is Result.Failure -> {
+                    _state.value = LoginUiState.Failure(challenge.error)
+                    return@launch
+                }
+
+                is Result.Success -> {
+                    val credential = try {
+                        runCeremony(challenge.data.authParamsPublicKey)
+                    } catch (e: Exception) {
+                        _state.value = LoginUiState.Failure(
+                            CeremonyError("Passkey registration was cancelled or failed: ${e.message}"),
+                        )
+                        return@launch
+                    }
+                    val result = client.loginWithPasskey(
+                        authSession = challenge.data.authSession,
+                        authResponse = credential,
+                        realm = connection,
+                    )
+                    _state.value = when (result) {
+                        is Result.Success -> {
+                            loginMethod = LoginMethod.Passkey
+                            credentialsManager?.saveCredentials(result.data)
+                            LoginUiState.Success(result.data)
+                        }
+
+                        is Result.Failure -> LoginUiState.Failure(result.error)
+                    }
+                }
+            }
+        }
+    }
+
+    // Requests a login challenge, runs the assertion ceremony, then exchanges the
+    // result for tokens. runCeremony is supplied by the screen (Activity-anchored).
+    fun passkeyLogin(
+        connection: String,
+        runCeremony: suspend (AuthParamsPublicKey) -> PublicKeyCredentials,
+    ) {
+        val client = client ?: return
+        _state.value = LoginUiState.Loading
+        viewModelScope.launch {
+            val challenge = client.passkeyLoginChallenge(realm = connection)
+            when (challenge) {
+                is Result.Failure -> {
+                    _state.value = LoginUiState.Failure(challenge.error)
+                    return@launch
+                }
+
+                is Result.Success -> {
+                    val credential = try {
+                        runCeremony(challenge.data.authParamsPublicKey)
+                    } catch (e: Exception) {
+                        _state.value = LoginUiState.Failure(
+                            CeremonyError("Passkey sign-in was cancelled or failed: ${e.message}"),
+                        )
+                        return@launch
+                    }
+                    val result = client.loginWithPasskey(
+                        authSession = challenge.data.authSession,
+                        authResponse = credential,
+                        realm = connection,
+                    )
+                    _state.value = when (result) {
+                        is Result.Success -> {
+                            loginMethod = LoginMethod.Passkey
+                            credentialsManager?.saveCredentials(result.data)
+                            LoginUiState.Success(result.data)
+                        }
+
+                        is Result.Failure -> LoginUiState.Failure(result.error)
+                    }
+                }
             }
         }
     }

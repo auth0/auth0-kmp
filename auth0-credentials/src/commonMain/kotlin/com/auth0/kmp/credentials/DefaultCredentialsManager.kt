@@ -7,6 +7,7 @@ import com.auth0.kmp.core.dpop.DPoPProofGenerator
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.result.map
+import com.auth0.kmp.core.token.RefreshTokenGrant
 import com.auth0.kmp.core.token.TokenClient
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
@@ -94,7 +95,7 @@ internal class DefaultCredentialsManager(
             refreshToken,
             clientId,
             scope,
-            extraParams = parameters
+            extraParameters = parameters,
         )
         val renewed = when (val result = tokenClient.fetchToken(grant, headers)) {
             is Result.Failure -> return@withAccountLock Result.Failure(result.error.toCredentialsManagerError())

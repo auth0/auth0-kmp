@@ -8,6 +8,9 @@ import com.auth0.kmp.networking.request.NetworkRequest
 import com.auth0.kmp.networking.retry.Backoff
 import com.auth0.kmp.networking.retry.RetryPolicy
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
@@ -43,7 +46,7 @@ private class FakeNetworkClient(
     override fun close() {}
 }
 
-private class StubGrant(override val parameters: Map<String, String>) : TokenGrant
+private class StubGrant(override val parameters: JsonObject) : TokenGrant
 
 @OptIn(kotlin.time.ExperimentalTime::class)
 class DefaultTokenClientTest {
@@ -53,7 +56,7 @@ class DefaultTokenClientTest {
         val net = FakeNetworkClient(Result.Success(tokenJson()))
         val client = DefaultTokenClient(net, FixedClock(Instant.fromEpochSeconds(1_000)))
 
-        client.fetchToken(StubGrant(mapOf("grant_type" to "refresh_token", "client_id" to "cid")))
+        client.fetchToken(StubGrant(buildJsonObject { put("grant_type", "refresh_token"); put("client_id", "cid") }))
 
         val req = net.lastRequest!!
         assertEquals(HttpMethod.POST, req.method)
@@ -67,7 +70,7 @@ class DefaultTokenClientTest {
         val net = FakeNetworkClient(Result.Success(tokenJson()))
         val client = DefaultTokenClient(net, FixedClock(Instant.fromEpochSeconds(1_000)))
 
-        val result = client.fetchToken(StubGrant(emptyMap()))
+        val result = client.fetchToken(StubGrant(buildJsonObject { }))
 
         result as Result.Success
         assertEquals("at", result.data.accessToken)
@@ -80,7 +83,7 @@ class DefaultTokenClientTest {
         val net = FakeNetworkClient(Result.Success(tokenJson()))
         val client = DefaultTokenClient(net, FixedClock(Instant.fromEpochSeconds(0)))
 
-        client.fetchToken(StubGrant(emptyMap()), headers = mapOf("X-Test" to "1"))
+        client.fetchToken(StubGrant(buildJsonObject { }), headers = mapOf("X-Test" to "1"))
 
         assertEquals("1", net.lastRequest!!.headers["X-Test"])
     }
@@ -90,7 +93,7 @@ class DefaultTokenClientTest {
         val net = FakeNetworkClient(Result.Failure(TransportError.NoInternet))
         val client = DefaultTokenClient(net, FixedClock(Instant.fromEpochSeconds(0)))
 
-        val result = client.fetchToken(StubGrant(emptyMap()))
+        val result = client.fetchToken(StubGrant(buildJsonObject { }))
 
         result as Result.Failure<TransportError>
         assertEquals(TransportError.NoInternet, result.error)
@@ -106,7 +109,7 @@ class DefaultTokenClientTest {
             retryOn = { true },
         )
 
-        client.fetchToken(StubGrant(emptyMap()), retryPolicy = policy)
+        client.fetchToken(StubGrant(buildJsonObject { }), retryPolicy = policy)
 
         assertSame(policy, net.lastRetryPolicy)
     }
