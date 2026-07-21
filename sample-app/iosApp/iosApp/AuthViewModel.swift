@@ -427,6 +427,8 @@ final class AuthViewModel {
                 authResponse: credential,
                 realm: realm,
                 organization: nil,
+                audience: nil,
+                scope: "openid email offline_access",
                 options: defaultOptions()
             )
             switch onEnum(of: result) {

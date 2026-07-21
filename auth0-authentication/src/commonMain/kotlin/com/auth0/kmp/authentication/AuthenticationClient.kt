@@ -6,9 +6,9 @@ import com.auth0.kmp.authentication.model.PasskeyLoginChallenge
 import com.auth0.kmp.authentication.model.PasskeyRegistrationChallenge
 import com.auth0.kmp.authentication.model.PublicKeyCredentials
 import com.auth0.kmp.authentication.model.SignupProfile
-import com.auth0.kmp.authentication.model.UserProfile
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.model.UserInfo
 import com.auth0.kmp.core.result.Result
 
 /**
@@ -81,14 +81,14 @@ public interface AuthenticationClient : AutoCloseable {
      * @param accessToken the access token issued for the user.
      * @param tokenType the token type to send in the `Authorization` header.
      * @param options per-call transport options (extra parameters, headers, retry policy).
-     * @return [Result.Success] with the [UserProfile], or [Result.Failure] with the
+     * @return [Result.Success] with the [UserInfo], or [Result.Failure] with the
      *   [AuthenticationError] that occurred.
      */
     public suspend fun userInfo(
         accessToken: String,
         tokenType: String = "Bearer",
         options: RequestOptions = RequestOptions(),
-    ): Result<UserProfile, AuthenticationError>
+    ): Result<UserInfo, AuthenticationError>
 
     /**
      * Revokes a refresh token so it can no longer be used to obtain new tokens.

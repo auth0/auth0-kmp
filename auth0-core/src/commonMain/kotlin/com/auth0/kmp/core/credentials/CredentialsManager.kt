@@ -30,7 +30,7 @@ public interface CredentialsManager : AutoCloseable {
      * @param minTtl the minimum remaining lifetime, in seconds, the access token
      *   must have to be considered valid.
      */
-    public suspend fun hasValidCredentials(minTtl: Long = 0): Boolean
+    public suspend fun hasValidCredentials(minTtl: Int = 0): Boolean
 
     /**
      * Returns the stored credentials, renewing them first when required.

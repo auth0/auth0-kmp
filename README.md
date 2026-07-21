@@ -99,6 +99,64 @@ android {
 {scheme}://YOUR_DOMAIN/android/YOUR_APP_PACKAGE_NAME/callback
 ```
 
+**4. Credential storage and device backup.** The Credentials Manager stores
+tokens in two files inside your app's private storage:
+
+| Contents | Location |
+|----------|----------|
+| Encrypted credentials | `files/datastore/auth0_credentials.preferences_pb` |
+| Encryption key material | `shared_prefs/auth0_credentials_keyset_prefs.xml` |
+
+`auth0-credentials` ships backup rules that **exclude these two files** from
+[Android Auto Backup](https://developer.android.com/guide/topics/data/autobackup)
+and device-to-device transfer, so credentials never leave the device. No action
+is required **unless your app defines its own backup rules.**
+
+If your app sets `android:dataExtractionRules` or `android:fullBackupContent` on
+its `<application>` element, the manifest merger reports a conflict, because these
+attributes reference a single rules file each and cannot be combined — your app's
+value replaces the SDK's. To resolve it, copy the two `<exclude>` entries into
+your own rules files and tell the merger you are intentionally overriding the SDK:
+
+```xml
+<!-- AndroidManifest.xml -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+    <application
+        android:dataExtractionRules="@xml/your_backup_rules"
+        android:fullBackupContent="@xml/your_full_backup"
+        tools:replace="android:dataExtractionRules,android:fullBackupContent">
+        ...
+    </application>
+</manifest>
+```
+
+```xml
+<!-- res/xml/your_backup_rules.xml — Android 12+ (API 31+) -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore/auth0_credentials.preferences_pb" />
+        <exclude domain="sharedpref" path="auth0_credentials_keyset_prefs.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore/auth0_credentials.preferences_pb" />
+        <exclude domain="sharedpref" path="auth0_credentials_keyset_prefs.xml" />
+    </device-transfer>
+</data-extraction-rules>
+```
+
+```xml
+<!-- res/xml/your_full_backup.xml — Android 11 and lower (API 30 and below) -->
+<full-backup-content>
+    <exclude domain="file" path="datastore/auth0_credentials.preferences_pb" />
+    <exclude domain="sharedpref" path="auth0_credentials_keyset_prefs.xml" />
+</full-backup-content>
+```
+
+> ⚠️ If you override the SDK's rules **without** re-adding these entries, the two
+> credential files will be included in your backups again. The build still
+> succeeds — the protection is lost silently.
+
 ### iOS setup
 
 Add the generated `Auth0` framework to your Xcode project, then register your

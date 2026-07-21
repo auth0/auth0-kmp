@@ -1,8 +1,5 @@
 package com.auth0.kmp.authentication.model
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-
 /**
  * A challenge issued by Auth0 for authenticating an existing user with a passkey.
  *
@@ -10,10 +7,9 @@ import kotlinx.serialization.Serializable
  * @param authParamsPublicKey the WebAuthn public-key options the authenticator
  *   needs to produce an assertion.
  */
-@Serializable
 public data class PasskeyLoginChallenge(
-    @SerialName("auth_session") val authSession: String,
-    @SerialName("authn_params_public_key") val authParamsPublicKey: AuthParamsPublicKey,
+    val authSession: String,
+    val authParamsPublicKey: AuthParamsPublicKey,
 )
 
 /**
@@ -24,10 +20,9 @@ public data class PasskeyLoginChallenge(
  * @param timeout the time, in milliseconds, the caller is given to respond.
  * @param userVerification the user-verification requirement, e.g. `required`.
  */
-@Serializable
 public data class AuthParamsPublicKey(
-    @SerialName("challenge") val challenge: String,
-    @SerialName("rpId") val rpId: String,
-    @SerialName("timeout") val timeout: Long,
-    @SerialName("userVerification") val userVerification: String,
+    val challenge: String,
+    val rpId: String,
+    val timeout: Long,
+    val userVerification: String,
 )

@@ -42,7 +42,7 @@ internal class DefaultCredentialsManager(
             storage.remove(storeKey)
         }
 
-    override suspend fun hasValidCredentials(minTtl: Long): Boolean {
+    override suspend fun hasValidCredentials(minTtl: Int): Boolean {
         val blob = runCatching { storage.retrieve(storeKey) }.getOrNull() ?: return false
         val stored = runCatching { CredentialsSerializer.decode(blob) }.getOrNull() ?: return false
         return !hasExpired(stored.credentials) && !willExpire(stored.credentials, minTtl)
@@ -74,7 +74,7 @@ internal class DefaultCredentialsManager(
         val scopeChanged = hasScopeChanged(credentials.scope, scope)
         val needsRenewal = forceRefresh ||
                 hasExpired(credentials) ||
-                willExpire(credentials, minTtl.toLong()) ||
+                willExpire(credentials, minTtl) ||
                 scopeChanged
 
         if (!needsRenewal) return@withAccountLock Result.Success(credentials)
@@ -106,8 +106,8 @@ internal class DefaultCredentialsManager(
             refreshToken = renewed.refreshToken?.takeIf { it.isNotBlank() } ?: credentials.refreshToken,
         )
 
-        if (willExpire(merged, minTtl.toLong())) {
-            val lifetime = (merged.expiresAt - clock.now()).inWholeSeconds
+        if (willExpire(merged, minTtl)) {
+            val lifetime = (merged.expiresAt - clock.now()).inWholeSeconds.toInt()
             return@withAccountLock Result.Failure(
                 CredentialsManagerError.LargeMinTtl(
                     minTtl,
@@ -198,7 +198,7 @@ internal class DefaultCredentialsManager(
     private fun hasExpired(credentials: Credentials): Boolean =
         credentials.expiresAt <= clock.now()
 
-    private fun willExpire(credentials: Credentials, minTtl: Long): Boolean =
+    private fun willExpire(credentials: Credentials, minTtl: Int): Boolean =
         credentials.expiresAt <= clock.now() + minTtl.seconds
 
     private companion object {

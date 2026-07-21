@@ -1,8 +1,5 @@
 package com.auth0.kmp.authentication.model
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-
 /**
  * A user created in a database connection via sign-up.
  *
@@ -21,17 +18,16 @@ import kotlinx.serialization.Serializable
  * @param nickname the user's preferred nickname.
  * @param picture a URL pointing to the user's profile picture.
  */
-@Serializable
 public data class DatabaseUser(
-    @SerialName("_id") val id: String,
-    @SerialName("email") val email: String? = null,
-    @SerialName("email_verified") val emailVerified: Boolean? = null,
-    @SerialName("username") val username: String? = null,
-    @SerialName("phone_number") val phoneNumber: String? = null,
-    @SerialName("phone_verified") val phoneVerified: Boolean? = null,
-    @SerialName("given_name") val givenName: String? = null,
-    @SerialName("family_name") val familyName: String? = null,
-    @SerialName("name") val name: String? = null,
-    @SerialName("nickname") val nickname: String? = null,
-    @SerialName("picture") val picture: String? = null,
+    val id: String,
+    val email: String? = null,
+    val emailVerified: Boolean? = null,
+    val username: String? = null,
+    val phoneNumber: String? = null,
+    val phoneVerified: Boolean? = null,
+    val givenName: String? = null,
+    val familyName: String? = null,
+    val name: String? = null,
+    val nickname: String? = null,
+    val picture: String? = null,
 )

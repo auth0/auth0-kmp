@@ -32,7 +32,10 @@ private class CapturingLogger : Logger {
  * everything the capturing logger saw. The response echoes a token-bearing JSON
  * body so a test can observe how much of the exchange reaches the log.
  */
-private suspend fun capturedLog(config: NetworkingConfiguration): String {
+private suspend fun capturedLog(
+    config: NetworkingConfiguration,
+    isDebugBuild: () -> Boolean = { true },
+): String {
     val logger = CapturingLogger()
     val engine = MockEngine {
         respond(
@@ -48,6 +51,7 @@ private suspend fun capturedLog(config: NetworkingConfiguration): String {
         applyNetworkingConfig(
             config.copy(requestTimeoutMillis = Long.MAX_VALUE),
             logger = logger,
+            isDebugBuild = isDebugBuild,
         )
     }
     client.request("https://example.auth0.com/oauth/token") {
@@ -75,5 +79,32 @@ class NetworkLoggingTest {
     fun body_logsWholeBody() = runTest {
         val log = capturedLog(NetworkingConfiguration(logLevel = NetworkLogLevel.BODY))
         assertTrue(log.contains("scope"), "BODY should log the response body: $log")
+    }
+
+    @Test
+    fun body_productionBuild_logsNothing() = runTest {
+        val log = capturedLog(
+            NetworkingConfiguration(logLevel = NetworkLogLevel.BODY),
+            isDebugBuild = { false },
+        )
+        assertTrue(log.isEmpty(), "production build must not log even at BODY: $log")
+    }
+
+    @Test
+    fun headers_productionBuild_logsNothing() = runTest {
+        val log = capturedLog(
+            NetworkingConfiguration(logLevel = NetworkLogLevel.HEADERS),
+            isDebugBuild = { false },
+        )
+        assertTrue(log.isEmpty(), "production build must not log even at HEADERS: $log")
+    }
+
+    @Test
+    fun body_debugBuild_logsBody() = runTest {
+        val log = capturedLog(
+            NetworkingConfiguration(logLevel = NetworkLogLevel.BODY),
+            isDebugBuild = { true },
+        )
+        assertTrue(log.contains("scope"), "debug build at BODY should log the body: $log")
     }
 }

@@ -6,7 +6,8 @@ package com.auth0.kmp.core
  * @param logLevel how much of each HTTP exchange is logged; defaults to
  *   [NetworkLogLevel.NONE]. Logs are emitted verbatim with no redaction, so
  *   [NetworkLogLevel.HEADERS] and [NetworkLogLevel.BODY] reveal request body and headers.
- *   Intended for local debugging only; never enable in production.
+ *   Intended for local debugging only. Header and body logging is additionally
+ *   suppressed on release builds;
  * @param connectTimeoutMillis time allowed to establish a connection, in
  *   milliseconds.
  * @param requestTimeoutMillis time allowed for the full request to complete, in

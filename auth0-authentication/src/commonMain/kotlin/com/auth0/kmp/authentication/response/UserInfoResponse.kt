@@ -1,6 +1,10 @@
-package com.auth0.kmp.authentication.model
+package com.auth0.kmp.authentication.response
 
+import com.auth0.kmp.core.annotation.InternalAuth0Api
+import com.auth0.kmp.core.model.Address
+import com.auth0.kmp.core.model.UserInfo
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
@@ -9,45 +13,18 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlin.time.Instant
 
-/**
- * The authenticated user's profile, built from the OIDC standard claims returned
- * by the `/userinfo` endpoint.
- *
- * Standard OIDC claims are exposed as typed properties. Any non-standard or
- * namespaced claim is collected into [customClaims], keyed by its claim name.
- *
- * @param sub the subject identifier — the unique, stable id of the user.
- * @param name the user's full name.
- * @param givenName the user's given (first) name.
- * @param familyName the user's family (last) name.
- * @param middleName the user's middle name.
- * @param nickname the user's casual name.
- * @param preferredUsername the name the user wishes to be referred to by.
- * @param profile a URL of the user's profile page.
- * @param picture a URL of the user's profile picture.
- * @param website a URL of the user's website.
- * @param email the user's preferred email address.
- * @param emailVerified whether the user's email address has been verified.
- * @param gender the user's gender.
- * @param birthdate the user's birthday.
- * @param zoneinfo the user's time zone.
- * @param locale the user's locale.
- * @param phoneNumber the user's preferred telephone number.
- * @param phoneNumberVerified whether the user's phone number has been verified.
- * @param address the user's postal address, keyed by address component.
- * @param updatedAt the time the user's information was last updated.
- * @param customClaims non-standard or namespaced claims not covered by a typed
- *   property, keyed by claim name.
- */
-@Serializable(with = UserProfileSerializer::class)
-public data class UserProfile(
+@Serializable(with = UserInfoResponseSerializer::class)
+@InternalAuth0Api
+public data class UserInfoResponse(
     val sub: String,
     val name: String? = null,
     val givenName: String? = null,
@@ -66,12 +43,72 @@ public data class UserProfile(
     val locale: String? = null,
     val phoneNumber: String? = null,
     val phoneNumberVerified: Boolean? = null,
-    val address: Map<String, String>? = null,
+    val address: AddressResponse? = null,
     val updatedAt: String? = null,
     val customClaims: Map<String, JsonElement> = emptyMap(),
 )
 
-internal object UserProfileSerializer : KSerializer<UserProfile> {
+@Serializable
+@InternalAuth0Api
+public data class AddressResponse(
+    @SerialName("formatted") val formatted: String? = null,
+    @SerialName("street_address") val streetAddress: String? = null,
+    @SerialName("locality") val locality: String? = null,
+    @SerialName("region") val region: String? = null,
+    @SerialName("postal_code") val postalCode: String? = null,
+    @SerialName("country") val country: String? = null,
+)
+
+@InternalAuth0Api
+public fun AddressResponse.toAddress(): Address =
+    Address(
+        formatted = formatted,
+        streetAddress = streetAddress,
+        locality = locality,
+        region = region,
+        postalCode = postalCode,
+        country = country,
+    )
+
+@InternalAuth0Api
+public fun UserInfoResponse.toUserInfo(): UserInfo =
+    UserInfo(
+        sub = sub,
+        name = name,
+        givenName = givenName,
+        familyName = familyName,
+        middleName = middleName,
+        nickname = nickname,
+        preferredUsername = preferredUsername,
+        profile = profile,
+        picture = picture,
+        website = website,
+        email = email,
+        emailVerified = emailVerified,
+        gender = gender,
+        birthdate = birthdate,
+        zoneinfo = zoneinfo,
+        locale = locale,
+        phoneNumber = phoneNumber,
+        phoneNumberVerified = phoneNumberVerified,
+        address = address?.toAddress(),
+        updatedAt = updatedAt?.let(::parseUpdatedAt),
+        customClaims = customClaims,
+    )
+
+/**
+ * Parses an OIDC `updated_at` wire value into an [Instant].
+ *
+ * The value may be a numeric epoch (seconds) or an ISO-8601 timestamp. An
+ * unparseable value yields `null` rather than throwing.
+ */
+private fun parseUpdatedAt(raw: String): Instant? {
+    raw.toDoubleOrNull()?.let { return Instant.fromEpochSeconds(it.toLong(), 0) }
+    return runCatching { Instant.parse(raw) }.getOrNull()
+}
+
+@OptIn(InternalAuth0Api::class)
+internal object UserInfoResponseSerializer : KSerializer<UserInfoResponse> {
 
     private const val SUB = "sub"
     private const val NAME = "name"
@@ -101,23 +138,24 @@ internal object UserProfileSerializer : KSerializer<UserProfile> {
     )
 
     override val descriptor: SerialDescriptor =
-        buildClassSerialDescriptor("com.auth0.kmp.authentication.model.UserProfile")
+        buildClassSerialDescriptor("com.auth0.kmp.authentication.response.UserInfoResponse")
 
-    override fun deserialize(decoder: Decoder): UserProfile {
+    override fun deserialize(decoder: Decoder): UserInfoResponse {
         val input = decoder as? JsonDecoder
-            ?: error("UserProfile can only be deserialized from JSON")
+            ?: error("UserInfoResponse can only be deserialized from JSON")
         val obj = input.decodeJsonElement().jsonObject
 
-        fun string(key: String): String? = obj[key]?.jsonPrimitive?.content
+        fun string(key: String): String? =
+            (obj[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content
         fun boolean(key: String): Boolean? = obj[key]?.jsonPrimitive?.booleanOrNull
 
-        val address = obj[ADDRESS]?.jsonObject?.mapNotNull { (k, v) ->
-            (v as? JsonPrimitive)?.content?.let { k to it }
-        }?.toMap()
+        val address = obj[ADDRESS]?.let {
+            input.json.decodeFromJsonElement(AddressResponse.serializer(), it)
+        }
         val customClaims = obj.filterKeys { it !in knownKeys }
 
-        return UserProfile(
-            sub = string(SUB) ?: error("UserProfile requires a '$SUB' claim"),
+        return UserInfoResponse(
+            sub = string(SUB) ?: error("UserInfoResponse requires a '$SUB' claim"),
             name = string(NAME),
             givenName = string(GIVEN_NAME),
             familyName = string(FAMILY_NAME),
@@ -141,9 +179,9 @@ internal object UserProfileSerializer : KSerializer<UserProfile> {
         )
     }
 
-    override fun serialize(encoder: Encoder, value: UserProfile) {
+    override fun serialize(encoder: Encoder, value: UserInfoResponse) {
         val output = encoder as? JsonEncoder
-            ?: error("UserProfile can only be serialized to JSON")
+            ?: error("UserInfoResponse can only be serialized to JSON")
         val obj = buildJsonObject {
             put(SUB, value.sub)
             value.name?.let { put(NAME, it) }
@@ -163,8 +201,8 @@ internal object UserProfileSerializer : KSerializer<UserProfile> {
             value.locale?.let { put(LOCALE, it) }
             value.phoneNumber?.let { put(PHONE_NUMBER, it) }
             value.phoneNumberVerified?.let { put(PHONE_NUMBER_VERIFIED, it) }
-            value.address?.let { address ->
-                put(ADDRESS, buildJsonObject { address.forEach { (k, v) -> put(k, v) } })
+            value.address?.let {
+                put(ADDRESS, output.json.encodeToJsonElement(AddressResponse.serializer(), it))
             }
             value.updatedAt?.let { put(UPDATED_AT, it) }
             value.customClaims.forEach { (k, v) -> put(k, v) }

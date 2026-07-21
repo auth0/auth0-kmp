@@ -1,8 +1,5 @@
 package com.auth0.kmp.authentication.model
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-
 /**
  * A challenge issued by Auth0 for registering a new passkey during sign-up.
  *
@@ -10,10 +7,9 @@ import kotlinx.serialization.Serializable
  * @param authParamsPublicKey the WebAuthn public-key options the authenticator
  *   needs to create a credential.
  */
-@Serializable
 public data class PasskeyRegistrationChallenge(
-    @SerialName("auth_session") val authSession: String,
-    @SerialName("authn_params_public_key") val authParamsPublicKey: AuthnParamsPublicKey,
+    val authSession: String,
+    val authParamsPublicKey: AuthnParamsPublicKey,
 )
 
 /**
@@ -27,14 +23,13 @@ public data class PasskeyRegistrationChallenge(
  * @param timeout the time, in milliseconds, the caller is given to respond.
  * @param user the user the credential is being created for.
  */
-@Serializable
 public data class AuthnParamsPublicKey(
-    @SerialName("authenticatorSelection") val authenticatorSelection: AuthenticatorSelection,
-    @SerialName("challenge") val challenge: String,
-    @SerialName("pubKeyCredParams") val pubKeyCredParams: List<PubKeyCredParam>,
-    @SerialName("rp") val relyingParty: RelyingParty,
-    @SerialName("timeout") val timeout: Long,
-    @SerialName("user") val user: PasskeyUser,
+    val authenticatorSelection: AuthenticatorSelection,
+    val challenge: String,
+    val pubKeyCredParams: List<PubKeyCredParam>,
+    val relyingParty: RelyingParty,
+    val timeout: Long,
+    val user: PasskeyUser,
 )
 
 /**
@@ -43,10 +38,9 @@ public data class AuthnParamsPublicKey(
  * @param residentKey whether a discoverable (resident) credential is required.
  * @param userVerification the user-verification requirement, e.g. `required`.
  */
-@Serializable
 public data class AuthenticatorSelection(
-    @SerialName("residentKey") val residentKey: String,
-    @SerialName("userVerification") val userVerification: String,
+    val residentKey: String,
+    val userVerification: String,
 )
 
 /**
@@ -55,10 +49,9 @@ public data class AuthenticatorSelection(
  * @param alg the COSE algorithm identifier.
  * @param type the credential type, e.g. `public-key`.
  */
-@Serializable
 public data class PubKeyCredParam(
-    @SerialName("alg") val alg: Int,
-    @SerialName("type") val type: String,
+    val alg: Int,
+    val type: String,
 )
 
 /**
@@ -67,10 +60,9 @@ public data class PubKeyCredParam(
  * @param id the relying-party identifier.
  * @param name the human-readable relying-party name.
  */
-@Serializable
 public data class RelyingParty(
-    @SerialName("id") val id: String,
-    @SerialName("name") val name: String,
+    val id: String,
+    val name: String,
 )
 
 /**
@@ -80,9 +72,8 @@ public data class RelyingParty(
  * @param id the base64url-encoded user handle.
  * @param name the user's account name, e.g. their email.
  */
-@Serializable
 public data class PasskeyUser(
-    @SerialName("displayName") val displayName: String,
-    @SerialName("id") val id: String,
-    @SerialName("name") val name: String,
+    val displayName: String,
+    val id: String,
+    val name: String,
 )

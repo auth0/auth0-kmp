@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:dataExtractionRules="@xml/auth0_credentials_backup_rules"
+        android:fullBackupContent="@xml/auth0_credentials_full_backup" />
+
+</manifest>

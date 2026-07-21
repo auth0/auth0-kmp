@@ -6,12 +6,20 @@ import com.auth0.kmp.authentication.model.PasskeyLoginChallenge
 import com.auth0.kmp.authentication.model.PasskeyRegistrationChallenge
 import com.auth0.kmp.authentication.model.PublicKeyCredentials
 import com.auth0.kmp.authentication.model.SignupProfile
-import com.auth0.kmp.authentication.model.UserProfile
 import com.auth0.kmp.authentication.request.PasskeyGrant
 import com.auth0.kmp.authentication.request.PasswordRealmGrant
+import com.auth0.kmp.authentication.response.DatabaseUserResponse
+import com.auth0.kmp.authentication.response.PasskeyLoginChallengeResponse
+import com.auth0.kmp.authentication.response.PasskeyRegistrationChallengeResponse
+import com.auth0.kmp.authentication.response.UserInfoResponse
+import com.auth0.kmp.authentication.response.toDatabaseUser
+import com.auth0.kmp.authentication.response.toPasskeyLoginChallenge
+import com.auth0.kmp.authentication.response.toPasskeyRegistrationChallenge
+import com.auth0.kmp.authentication.response.toUserInfo
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.model.UserInfo
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.token.RefreshTokenGrant
 import com.auth0.kmp.core.token.TokenClient
@@ -91,7 +99,7 @@ internal class DefaultAuthenticationClient(
         }
 
         return post("/dbconnections/signup", body, options) {
-            json.decodeFromString<DatabaseUser>(it)
+            json.decodeFromString<DatabaseUserResponse>(it).toDatabaseUser()
         }
     }
 
@@ -120,7 +128,7 @@ internal class DefaultAuthenticationClient(
         accessToken: String,
         tokenType: String,
         options: RequestOptions,
-    ): Result<UserProfile, AuthenticationError> {
+    ): Result<UserInfo, AuthenticationError> {
         if (accessToken.isBlank()) {
             return Result.Failure(AuthenticationError.InvalidInput("accessToken must not be blank"))
         }
@@ -136,7 +144,7 @@ internal class DefaultAuthenticationClient(
         )
 
         return networkClient.request(request, options.retryPolicy) {
-            json.decodeFromString<UserProfile>(it)
+            json.decodeFromString<UserInfoResponse>(it).toUserInfo()
         }.toAuthResult()
     }
 
@@ -190,7 +198,7 @@ internal class DefaultAuthenticationClient(
         }
 
         return post("/passkey/challenge", body, options) {
-            json.decodeFromString<PasskeyLoginChallenge>(it)
+            json.decodeFromString<PasskeyLoginChallengeResponse>(it).toPasskeyLoginChallenge()
         }
     }
 
@@ -210,7 +218,7 @@ internal class DefaultAuthenticationClient(
         }
 
         return post("/passkey/register", body, options) {
-            json.decodeFromString<PasskeyRegistrationChallenge>(it)
+            json.decodeFromString<PasskeyRegistrationChallengeResponse>(it).toPasskeyRegistrationChallenge()
         }
     }
 

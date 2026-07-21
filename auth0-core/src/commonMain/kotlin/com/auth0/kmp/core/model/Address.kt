@@ -1,20 +1,19 @@
 package com.auth0.kmp.core.model
 
 /**
- * The OpenID Connect `address` claim — a structured postal address.
+ * A user's postal address, as defined by the OIDC `address` standard claim.
  *
- * Defined by OpenID Connect Core 1.0, section 5.1.1 (Address Claim). Every
- * member is optional. [formatted] is a single human-readable string; the
- * remaining members are its individual components.
+ * A provider may return any subset of these components, so every field is
+ * optional.
  *
- * @param formatted the full mailing address, newline-separated.
- * @param streetAddress street component (house number, street name, etc.).
- * @param locality city or locality.
- * @param region state, province, prefecture, or region.
- * @param postalCode zip or postal code.
- * @param country country name.
+ * @param formatted the full mailing address, formatted for display or a label.
+ * @param streetAddress the street address, which may span multiple lines.
+ * @param locality the city or locality.
+ * @param region the state, province, prefecture, or region.
+ * @param postalCode the zip or postal code.
+ * @param country the country name.
  */
-data class Address(
+public data class Address(
     val formatted: String? = null,
     val streetAddress: String? = null,
     val locality: String? = null,

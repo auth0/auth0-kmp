@@ -3,6 +3,7 @@ package com.auth0.kmp.networking.transport
 import com.auth0.kmp.core.NetworkLogLevel
 import com.auth0.kmp.core.NetworkingConfiguration
 import com.auth0.kmp.core.dpop.DPoPCollaborators
+import com.auth0.kmp.core.logging.isDebugBuild
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngineFactory
@@ -29,13 +30,17 @@ internal fun buildHttpClient(
     engineFactory: HttpClientEngineFactory<*> = httpEngineFactory(),
     dpopCollaborators: DPoPCollaborators? = null,
     logger: Logger = Logger.SIMPLE,
+    isDebugBuild: () -> Boolean = ::isDebugBuild,
 ): HttpClient =
-    HttpClient(engineFactory) { applyNetworkingConfig(config, dpopCollaborators, logger) }
+    HttpClient(engineFactory) {
+        applyNetworkingConfig(config, dpopCollaborators, logger, isDebugBuild)
+    }
 
 internal fun HttpClientConfig<*>.applyNetworkingConfig(
     config: NetworkingConfiguration,
     dpopCollaborators: DPoPCollaborators? = null,
     logger: Logger = Logger.SIMPLE,
+    isDebugBuild: () -> Boolean = ::isDebugBuild,
 ) {
     expectSuccess = false
 
@@ -48,7 +53,7 @@ internal fun HttpClientConfig<*>.applyNetworkingConfig(
         json(json)
     }
 
-    if (config.logLevel != NetworkLogLevel.NONE) {
+    if (config.logLevel != NetworkLogLevel.NONE && isDebugBuild()) {
         install(Logging) {
             this.logger = logger
             format = LoggingFormat.OkHttp

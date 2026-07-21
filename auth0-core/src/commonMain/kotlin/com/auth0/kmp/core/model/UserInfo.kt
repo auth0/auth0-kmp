@@ -1,37 +1,39 @@
 package com.auth0.kmp.core.model
 
+import kotlinx.serialization.json.JsonElement
 import kotlin.time.Instant
 
 /**
- * The authenticated user's standard claims, as returned by the OpenID Connect
- * `/userinfo` endpoint.
+ * The authenticated user's profile, built from the OIDC standard claims returned
+ * by the `/userinfo` endpoint.
  *
- * Fields are the Standard Claims defined by OpenID Connect Core 1.0, section
- * 5.1. Only [sub] is guaranteed to be present; every other claim is optional and
- * depends on the requested scopes and what the provider returns.
+ * Standard OIDC claims are exposed as typed properties. Any non-standard or
+ * namespaced claim is collected into [customClaims], keyed by its claim name.
  *
- * @param sub subject — the stable, unique identifier for the user.
- * @param name full name in displayable form.
- * @param givenName given (first) name(s).
- * @param familyName surname / last name(s).
- * @param middleName middle name(s).
- * @param nickname casual name, may or may not match [givenName].
- * @param preferredUsername shorthand name the user wishes to be referred to by.
- * @param profile URL of the user's profile page.
- * @param picture URL of the user's profile picture.
- * @param website URL of the user's web page or blog.
- * @param email preferred email address.
- * @param emailVerified whether the email address has been verified.
+ * @param sub the subject identifier — the unique, stable id of the user.
+ * @param name the user's full name.
+ * @param givenName the user's given (first) name.
+ * @param familyName the user's family (last) name.
+ * @param middleName the user's middle name.
+ * @param nickname the user's casual name.
+ * @param preferredUsername the name the user wishes to be referred to by.
+ * @param profile a URL of the user's profile page.
+ * @param picture a URL of the user's profile picture.
+ * @param website a URL of the user's website.
+ * @param email the user's preferred email address.
+ * @param emailVerified whether the user's email address has been verified.
  * @param gender the user's gender.
- * @param birthdate birthdate, typically `YYYY-MM-DD` (year `0000` may be omitted).
- * @param zoneinfo time zone, e.g. `Europe/Paris` or `America/Los_Angeles`.
- * @param locale locale, typically a BCP47 tag such as `en-US`.
- * @param phoneNumber preferred telephone number.
- * @param phoneNumberVerified whether the phone number has been verified.
- * @param address structured postal address.
- * @param updatedAt time the user's information was last updated.
+ * @param birthdate the user's birthday.
+ * @param zoneinfo the user's time zone.
+ * @param locale the user's locale.
+ * @param phoneNumber the user's preferred telephone number.
+ * @param phoneNumberVerified whether the user's phone number has been verified.
+ * @param address the user's postal address.
+ * @param updatedAt the time the user's information was last updated.
+ * @param customClaims non-standard or namespaced claims not covered by a typed
+ *   property, keyed by claim name.
  */
-data class UserInfo(
+public data class UserInfo(
     val sub: String,
     val name: String? = null,
     val givenName: String? = null,
@@ -52,4 +54,5 @@ data class UserInfo(
     val phoneNumberVerified: Boolean? = null,
     val address: Address? = null,
     val updatedAt: Instant? = null,
+    val customClaims: Map<String, JsonElement> = emptyMap(),
 )

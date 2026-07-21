@@ -31,7 +31,7 @@ class CredentialsManagerErrorMapperTest {
 
         val apiError = assertIs<CredentialsManagerError.ApiError>(error)
         assertEquals("invalid_grant", apiError.code)
-        assertEquals("refresh token is invalid", apiError.description)
+        assertEquals("refresh token is invalid", apiError.errorDescription)
         assertEquals(403, apiError.statusCode)
     }
 

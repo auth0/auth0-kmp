@@ -21,18 +21,18 @@ public sealed interface CredentialsManagerError : Auth0Error {
      * @param minTtl the requested minimum lifetime, in seconds.
      * @param lifetime the renewed token's actual lifetime, in seconds.
      */
-    public data class LargeMinTtl(val minTtl: Int, val lifetime: Long) : CredentialsManagerError
+    public data class LargeMinTtl(val minTtl: Int, val lifetime: Int) : CredentialsManagerError
 
     /**
      * Auth0 rejected the renewal with an error payload.
      *
      * @param code the Auth0 error code, for example `invalid_grant`.
-     * @param description a human-readable explanation of the failure.
+     * @param errorDescription a human-readable explanation of the failure.
      * @param statusCode the HTTP status code that carried the error.
      */
     public data class ApiError(
         val code: String,
-        val description: String,
+        val errorDescription: String,
         val statusCode: Int,
     ) : CredentialsManagerError
 

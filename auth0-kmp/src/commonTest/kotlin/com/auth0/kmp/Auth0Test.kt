@@ -7,13 +7,13 @@ import com.auth0.kmp.authentication.model.PasskeyLoginChallenge
 import com.auth0.kmp.authentication.model.PasskeyRegistrationChallenge
 import com.auth0.kmp.authentication.model.PublicKeyCredentials
 import com.auth0.kmp.authentication.model.SignupProfile
-import com.auth0.kmp.authentication.model.UserProfile
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.credentials.CredentialsManager
 import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.model.UserInfo
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.credentials.Storage
 import com.auth0.kmp.networking.NetworkClient
@@ -81,7 +81,7 @@ private class FakeAuthenticationClient : AuthenticationClient {
         accessToken: String,
         tokenType: String,
         options: RequestOptions,
-    ): Result<UserProfile, AuthenticationError> = error("not used")
+    ): Result<UserInfo, AuthenticationError> = error("not used")
 
     override suspend fun revoke(
         refreshToken: String,
@@ -128,7 +128,7 @@ private class FakeCredentialsManager : CredentialsManager {
     override suspend fun clearCredentials(): Result<Unit, CredentialsManagerError> =
         error("not used")
 
-    override suspend fun hasValidCredentials(minTtl: Long): Boolean = error("not used")
+    override suspend fun hasValidCredentials(minTtl: Int): Boolean = error("not used")
 
     override suspend fun getCredentials(
         scope: String?,

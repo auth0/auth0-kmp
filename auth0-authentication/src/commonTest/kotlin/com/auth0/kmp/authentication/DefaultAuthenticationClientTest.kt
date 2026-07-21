@@ -543,7 +543,7 @@ class DefaultAuthenticationClientTest {
     }
 
     @Test
-    fun userInfo_addressWithNonPrimitiveSubField_dropsIt_keepsPrimitives() = runTest {
+    fun userInfo_addressWithNonPrimitiveSubField_ignoresIt_keepsPrimitives() = runTest {
         val (impl, _) = restClient(
             Result.Success("""{"sub":"auth0|1","address":{"country":"US","geo":{"lat":1}}}"""),
         )
@@ -551,7 +551,8 @@ class DefaultAuthenticationClientTest {
         val result = impl.userInfo(accessToken = "at")
 
         assertTrue(result is Result.Success)
-        assertEquals(mapOf("country" to "US"), result.data.address)
+        assertEquals("US", result.data.address?.country)
+        assertNull(result.data.address?.formatted)
     }
 
     // --- revoke -------------------------------------------------------------
