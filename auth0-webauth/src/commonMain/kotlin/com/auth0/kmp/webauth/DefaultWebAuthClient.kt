@@ -3,6 +3,7 @@ package com.auth0.kmp.webauth
 import com.auth0.kmp.core.Auth0Account
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.dpop.DPoPProofGenerator
+import com.auth0.kmp.core.logging.Auth0Log
 import com.auth0.kmp.core.token.TokenClient
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
@@ -63,12 +64,14 @@ internal class DefaultWebAuthClient(
         }
 
         val authorizeUrl = buildAuthorizeUrl(account, transaction, options, dpopJkt)
+        Auth0Log.d(TAG, "Starting authorization against ${Url(authorizeUrl).host}")
 
         return when (val launch = browser.launch(authorizeUrl, callbackScheme, options.ephemeral)) {
             is Result.Failure -> {
                 store.clear(transaction.state)
                 launch
             }
+
             is Result.Success -> {
                 store.clear(transaction.state)
                 handleRedirect(launch.data, transaction, options)
@@ -95,17 +98,23 @@ internal class DefaultWebAuthClient(
         val params = Url(redirectUrl).parameters
 
         params["error"]?.let { code ->
+            Auth0Log.e(TAG, "Authorization endpoint returned an error in the redirect")
             return Result.Failure(
                 WebAuthError.AuthorizationError(code, params["error_description"] ?: code),
             )
         }
 
         if (params["state"] != transaction.state) {
+            Auth0Log.e(
+                TAG,
+                "Redirect state does not match the request; possible CSRF or stale transaction"
+            )
             return Result.Failure(WebAuthError.InvalidState)
         }
 
         val code = params["code"]
             ?: return Result.Failure(WebAuthError.BrowserError("Redirect did not contain an authorization code"))
+
 
         val grant = CodeExchangeGrant(
             code = code,
@@ -126,6 +135,7 @@ internal class DefaultWebAuthClient(
         options: LoginOptions,
     ): Result<Credentials, WebAuthError> {
         signatureValidator.verify(credentials.idToken)?.let {
+            Auth0Log.e(TAG, "ID token signature validation failed")
             return Result.Failure(WebAuthError.IdTokenValidation(it))
         }
         val context = IdTokenValidationContext(
@@ -134,6 +144,7 @@ internal class DefaultWebAuthClient(
             organization = options.organization,
         )
         claimsValidator.validate(credentials.idToken, context)?.let {
+            Auth0Log.e(TAG, "ID token claims validation failed")
             return Result.Failure(WebAuthError.IdTokenValidation(it))
         }
         return Result.Success(credentials)
@@ -141,5 +152,9 @@ internal class DefaultWebAuthClient(
 
     override fun cancel() {
         store.current()?.let { store.clear(it.state) }
+    }
+
+    private companion object {
+        private const val TAG = "Auth0.WebAuth"
     }
 }

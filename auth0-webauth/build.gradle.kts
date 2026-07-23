@@ -32,7 +32,7 @@ kotlin {
         androidResources {
             enable = true
         }
-        withHostTest { }
+        withHostTest { isReturnDefaultValues = true }
     }
 
     sourceSets {

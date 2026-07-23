@@ -4,6 +4,7 @@ import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.credentials.CredentialsManager
 import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.dpop.DPoPProofGenerator
+import com.auth0.kmp.core.logging.Auth0Log
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.result.map
@@ -61,7 +62,10 @@ internal class DefaultCredentialsManager(
             is Result.Failure -> {
                 // The blob can no longer be decrypted (e.g. the device key was
                 // invalidated); drop it so the next login starts clean.
-                if (read.error is CredentialsManagerError.CryptoFailed) storageCall { storage.remove(storeKey) }
+                if (read.error is CredentialsManagerError.CryptoFailed) {
+                    Auth0Log.e(TAG, "Stored credentials could not be decrypted; clearing them")
+                    storageCall { storage.remove(storeKey) }
+                }
                 return@withAccountLock read
             }
         }
@@ -79,8 +83,15 @@ internal class DefaultCredentialsManager(
 
         if (!needsRenewal) return@withAccountLock Result.Success(credentials)
 
+        Auth0Log.d(
+            TAG,
+            "Renewing credentials (forceRefresh=$forceRefresh, expired=${hasExpired(credentials)}, " +
+                "willExpire=${willExpire(credentials, minTtl)}, scopeChanged=$scopeChanged)",
+        )
+
         val refreshToken = credentials.refreshToken
         if (refreshToken.isNullOrBlank()) {
+            Auth0Log.e(TAG, "Credentials need renewal but no refresh token is available")
             return@withAccountLock Result.Failure(CredentialsManagerError.NoRefreshToken)
         }
 
@@ -160,12 +171,14 @@ internal class DefaultCredentialsManager(
             is Result.Failure -> return Result.Failure(CredentialsManagerError.DPoPKeyUnavailable(result.error))
         }
         if (currentThumbprint == null) {
+            Auth0Log.e(TAG, "DPoP keypair is missing for stored credentials; clearing them")
             clearCredentials()
             return Result.Failure(CredentialsManagerError.DPoPKeyMissing)
         }
         if (!useDPoP) return Result.Failure(CredentialsManagerError.DPoPNotConfigured)
 
         if (storedThumbprint != null && currentThumbprint != storedThumbprint) {
+            Auth0Log.e(TAG, "DPoP key fingerprint no longer matches stored credentials; clearing them")
             clearCredentials()
             return Result.Failure(CredentialsManagerError.DPoPKeyMismatch)
         }
@@ -203,5 +216,6 @@ internal class DefaultCredentialsManager(
 
     private companion object {
         private const val DPOP_TOKEN_TYPE = "DPoP"
+        private const val TAG = "Auth0.Credentials"
     }
 }

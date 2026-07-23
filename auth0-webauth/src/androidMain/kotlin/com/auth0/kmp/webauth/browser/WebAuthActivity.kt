@@ -7,6 +7,7 @@ import androidx.browser.auth.AuthTabIntent
 import androidx.browser.customtabs.CustomTabsClient
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
+import com.auth0.kmp.core.logging.Auth0Log
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.webauth.error.WebAuthError
 
@@ -78,6 +79,7 @@ internal class WebAuthActivity : ComponentActivity() {
         val ephemeral = intent.getBooleanExtra(EXTRA_EPHEMERAL, false)
 
         if (authorizeUrl == null || scheme == null) {
+            Auth0Log.e(TAG, "Missing browser launch parameters; cannot start authorization")
             WebAuthResultBridge.resolve(
                 Result.Failure(WebAuthError.BrowserError("Missing browser launch parameters."))
             )
@@ -88,6 +90,8 @@ internal class WebAuthActivity : ComponentActivity() {
         val browserPackage = CustomTabsClient.getPackageName(this, emptyList())
         val authTabSupported = browserPackage != null &&
                 CustomTabsClient.isAuthTabSupported(this, browserPackage)
+
+        Auth0Log.d(TAG, "Launching browser via ${if (authTabSupported) "Auth Tab" else "Custom Tab (fallback)"}")
 
         if (authTabSupported) {
             AuthTabIntent.Builder()
@@ -127,6 +131,7 @@ internal class WebAuthActivity : ComponentActivity() {
         }
 
     internal companion object {
+        private const val TAG = "Auth0.WebAuth"
         private const val EXTRA_INTENT_LAUNCHED = "com.auth0.kmp.webauth.INTENT_LAUNCHED"
         const val EXTRA_AUTHORIZE_URL: String = "com.auth0.kmp.webauth.AUTHORIZE_URL"
         const val EXTRA_CALLBACK_SCHEME: String = "com.auth0.kmp.webauth.CALLBACK_SCHEME"
