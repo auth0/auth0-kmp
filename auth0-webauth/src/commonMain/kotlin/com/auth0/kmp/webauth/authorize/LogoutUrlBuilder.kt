@@ -6,6 +6,8 @@ import com.auth0.kmp.webauth.LogoutOptions
 import io.ktor.http.URLBuilder
 import io.ktor.http.appendPathSegments
 
+private val LOGOUT_RESERVED_PARAMS = setOf("client_id", "returnTo", "federated")
+
 internal fun buildLogoutUrl(
     account: Auth0Account,
     returnTo: String,
@@ -17,6 +19,6 @@ internal fun buildLogoutUrl(
             append("client_id", account.clientId)
             append("returnTo", returnTo)
             if (options.federated) append("federated", "1")
-            options.extraParameters.forEach { (key, value) -> append(key, value) }
+            appendExtraParameters(options.extraParameters, LOGOUT_RESERVED_PARAMS)
         }
     }.buildString()

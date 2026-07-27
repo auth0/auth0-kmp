@@ -40,11 +40,15 @@ class AuthorizeUrlBuilderTest {
 
     @Test
     fun url_encodes_scope_and_redirect_uri() {
-        val url = buildAuthorizeUrl(account, transaction(), LoginOptions(scope = "openid profile email"))
+        val url =
+            buildAuthorizeUrl(account, transaction(), LoginOptions(scope = "openid profile email"))
         // space in scope must be percent/plus encoded, not a raw space
         assertTrue(!url.contains("scope=openid profile email"), "scope not encoded: $url")
         // ':' and '/' in redirect_uri must be percent-encoded
-        assertContains(url, "redirect_uri=myapp%3A%2F%2Ftest.auth0.com%2Fandroid%2Fcom.example%2Fcallback")
+        assertContains(
+            url,
+            "redirect_uri=myapp%3A%2F%2Ftest.auth0.com%2Fandroid%2Fcom.example%2Fcallback"
+        )
     }
 
     @Test
@@ -90,7 +94,8 @@ class AuthorizeUrlBuilderTest {
 
     @Test
     fun appends_dpop_jkt_when_provided() {
-        val url = buildAuthorizeUrl(account, transaction(), LoginOptions(), dpopJkt = "the-thumbprint")
+        val url =
+            buildAuthorizeUrl(account, transaction(), LoginOptions(), dpopJkt = "the-thumbprint")
         assertContains(url, "dpop_jkt=the-thumbprint")
     }
 
@@ -98,5 +103,44 @@ class AuthorizeUrlBuilderTest {
     fun omits_dpop_jkt_when_not_provided() {
         val url = buildAuthorizeUrl(account, transaction(), LoginOptions())
         assertTrue(!url.contains("dpop_jkt="), "url: $url")
+    }
+
+    @Test
+    fun extra_parameters_cannot_override_sdk_params() {
+        val txn = transaction()
+        val forged = mapOf(
+            "response_type" to "token",
+            "client_id" to "attacker",
+            "redirect_uri" to "myapp://evil",
+            "scope" to "openid admin",
+            "state" to "forged",
+            "nonce" to "forged",
+            "code_challenge" to "forged",
+            "code_challenge_method" to "plain",
+            "dpop_jkt" to "attacker-key",
+            "ui_locales" to "en", // non-reserved control — must pass through
+        )
+        val url = buildAuthorizeUrl(
+            account,
+            txn,
+            LoginOptions(scope = "openid", extraParameters = forged),
+            dpopJkt = "the-thumbprint", // DPoP-on: real dpop_jkt collision
+        )
+        assertContains(url, "response_type=code")
+        assertContains(url, "client_id=cid")
+        assertContains(url, "state=the-state")
+        assertContains(url, "nonce=the-nonce")
+        assertContains(url, "code_challenge=${txn.pkce.codeChallenge}")
+        assertContains(url, "code_challenge_method=S256")
+        assertContains(url, "dpop_jkt=the-thumbprint")
+
+        assertTrue(!url.contains("response_type=token"), "url: $url")
+        assertTrue(!url.contains("client_id=attacker"), "url: $url")
+        assertTrue(!url.contains("state=forged"), "url: $url")
+        assertTrue(!url.contains("nonce=forged"), "url: $url")
+        assertTrue(!url.contains("code_challenge=forged"), "url: $url")
+        assertTrue(!url.contains("code_challenge_method=plain"), "url: $url")
+        // non-reserved still passes through
+        assertContains(url, "ui_locales=en")
     }
 }

@@ -47,4 +47,24 @@ class LogoutUrlBuilderTest {
         val url = buildLogoutUrl(account, returnTo, LogoutOptions(extraParameters = mapOf("ui_locales" to "en")))
         assertContains(url, "ui_locales=en")
     }
+
+    @Test
+    fun extra_parameters_cannot_override_sdk_params() {
+        val url = buildLogoutUrl(
+            account,
+            returnTo,
+            LogoutOptions(
+                federated = false,
+                extraParameters = mapOf(
+                    "client_id" to "attacker",
+                    "returnTo" to "https://evil.example.com",
+                    "ui_locales" to "en",
+                ),
+            ),
+        )
+        assertContains(url, "client_id=cid")
+        assertTrue(!url.contains("client_id=attacker"), "url: $url")
+        assertTrue(!url.contains("evil.example.com"), "url: $url")
+        assertContains(url, "ui_locales=en")
+    }
 }
