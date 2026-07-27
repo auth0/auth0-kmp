@@ -55,7 +55,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":auth0-kmp"))
+    implementation(project(":auth0"))
 
     implementation(libs.kotlinx.coroutines.core)
 

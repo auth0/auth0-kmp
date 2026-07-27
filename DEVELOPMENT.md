@@ -22,11 +22,11 @@ The build is a single Gradle project with these modules (see `settings.gradle.kt
 | `:auth0-authentication` | Authentication API client (direct login). |
 | `:auth0-webauth` | Browser-based Web Auth (login/logout). |
 | `:auth0-credentials` | Secure credential storage and renewal. |
-| `:auth0-kmp` | Umbrella that produces the iOS `Auth0` framework (exports the modules above). |
+| `:auth0` | Umbrella that produces the iOS `Auth0` framework (exports the modules above). |
 | `:sample-app:androidApp` | Android dogfooding sample. |
 
 The iOS sample (`sample-app/iosApp`) is a standalone Xcode project, not a Gradle
-module — it consumes the framework produced by `:auth0-kmp`.
+module — it consumes the framework produced by `:auth0`.
 
 ## Building
 
@@ -135,6 +135,6 @@ configuration on an emulator or device, or from the command line:
 3. Select an iOS Simulator destination and press **Run** (⌘R).
 
 The Xcode project has a build phase that runs
-`./gradlew :auth0-kmp:embedAndSignAppleFrameworkForXcode`, so the `Auth0`
+`./gradlew :auth0:embedAndSignAppleFrameworkForXcode`, so the `Auth0`
 framework is rebuilt and embedded automatically on each build — you do not need
 to build it separately.

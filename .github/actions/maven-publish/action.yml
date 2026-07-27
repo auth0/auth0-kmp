@@ -1,0 +1,30 @@
+name: Publish release to Maven Central
+
+inputs:
+  ossr-username:
+    required: true
+  ossr-token:
+    required: true
+  signing-key:
+    required: true
+  signing-password:
+    required: true
+
+runs:
+  using: composite
+
+  steps:
+    - uses: gradle/actions/wrapper-validation@d156388eb19639ec20ade50009f3d199ce1e2808 # v4.1.0
+
+    - name: Publish packages to Maven Central
+      shell: bash
+      # --no-configuration-cache: vanniktech's Central Portal upload task is NOT
+      # config-cache compatible (Gradle #22779 — repo URLs evaluated eagerly);
+      # still unfixed as of plugin v0.37.0. Without this flag the release job
+      # fails at execution. Local/snapshot publishing can keep the cache.
+      run: ./gradlew publishToMavenCentral --no-daemon --console=plain --stacktrace --no-configuration-cache
+      env:
+        ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ inputs.ossr-username }}
+        ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ inputs.ossr-token }}
+        ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ inputs.signing-key }}
+        ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ inputs.signing-password }}
