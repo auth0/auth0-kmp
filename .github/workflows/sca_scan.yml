@@ -22,5 +22,6 @@ jobs:
         uses: auth0/devsecops-tooling/.github/actions/sca-scan@main
         with:
           additional-arguments: "--all-projects"
-          SNYK_TOKEN: ${{ secrets.CIC_SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
           SIGNAL_HANDLER_TOKEN: ${{ secrets.SIGNAL_HANDLER_TOKEN }}
+          SIGNAL_HANDLER_DOMAIN: ${{ secrets.SIGNAL_HANDLER_DOMAIN }}
