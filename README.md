@@ -29,7 +29,7 @@ provides the `Auth0` entry point and aggregates every feature module:
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("com.auth0.kmp:auth0:<version>")
+            implementation("com.auth0.kmp:auth0:1.0.0-beta.0")
         }
     }
 }
@@ -38,10 +38,10 @@ kotlin {
 Or depend only on the features you use:
 
 ```kotlin
-implementation("com.auth0.kmp:auth0-core:<version>")
-implementation("com.auth0.kmp:auth0-authentication:<version>")
-implementation("com.auth0.kmp:auth0-webauth:<version>")
-implementation("com.auth0.kmp:auth0-credentials:<version>")
+implementation("com.auth0.kmp:auth0-core:1.0.0-beta.0")
+implementation("com.auth0.kmp:auth0-authentication:1.0.0-beta.0")
+implementation("com.auth0.kmp:auth0-webauth:1.0.0-beta.0")
+implementation("com.auth0.kmp:auth0-credentials:1.0.0-beta.0")
 ```
 
 ### Configure Auth0
