@@ -8,7 +8,7 @@ Swift interop on iOS.
 
 [![License](https://img.shields.io/:license-Apache%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 
-🚀 [**Getting Started**](#getting-started) • 💡 [**Usage**](#usage) • 💬 [**Feedback**](#feedback)
+🚀 [**Getting Started**](#getting-started) • 💡 [**Usage**](#usage) • 📚 [**Examples**](./EXAMPLES.md) • 💬 [**Feedback**](#feedback)
 
 ## Getting Started
 
@@ -18,6 +18,31 @@ Swift interop on iOS.
 - **Android** minSdk 24 or higher
 - **iOS** 14.0 or higher
 - An [Auth0 account](https://auth0.com/signup) with a **Native** application
+
+### Installation
+
+Add the umbrella module to your shared module's `commonMain` dependencies. It
+provides the `Auth0` entry point and aggregates every feature module:
+
+```kotlin
+// shared/build.gradle.kts
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            implementation("com.auth0.kmp:auth0:<version>")
+        }
+    }
+}
+```
+
+Or depend only on the features you use:
+
+```kotlin
+implementation("com.auth0.kmp:auth0-core:<version>")
+implementation("com.auth0.kmp:auth0-authentication:<version>")
+implementation("com.auth0.kmp:auth0-webauth:<version>")
+implementation("com.auth0.kmp:auth0-credentials:<version>")
+```
 
 ### Configure Auth0
 
@@ -280,13 +305,20 @@ result.fold(
 val credentials = result.getOrNull()
 ```
 
+### More examples
+
+The examples above cover the common path. For per-feature depth — organizations,
+ephemeral sessions, passkeys, custom credential stores, DPoP, retries, and the
+full error families — see [EXAMPLES.md](./EXAMPLES.md).
+
 ## Modules
 
-The SDK is split into focused modules. 
+The SDK is split into focused modules, all published under the `com.auth0.kmp`
+group.
 
 | Module | Provides |
 |--------|----------|
-| `auth0-kmp` | Umbrella: the `Auth0` entry point and the shared-transport composition root. Aggregates all feature modules. |
+| `auth0` | Umbrella: the `Auth0` entry point and the shared-transport composition root. Aggregates all feature modules. |
 | `auth0-core` | `Auth0Account`, the `Result` type and error hierarchies, and shared building blocks used by the other modules. |
 | `auth0-webauth` | Browser-based Universal Login and logout (`WebAuthClient`). |
 | `auth0-authentication` | Direct calls against the Authentication API (`AuthenticationClient`). |
