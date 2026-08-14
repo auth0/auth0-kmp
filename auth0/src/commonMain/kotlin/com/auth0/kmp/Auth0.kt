@@ -21,8 +21,6 @@ import com.auth0.kmp.webauth.webAuthClient
  * cached and created on first access; [credentials] returns a new manager on
  * each call. Call [close] to release the shared transport when this instance is
  * no longer needed.
- *
- * @param account the tenant/application coordinates every client communicates with.
  */
 @OptIn(InternalAuth0Api::class)
 public class Auth0 internal constructor(
@@ -33,6 +31,11 @@ public class Auth0 internal constructor(
     private val buildCredentials: (NetworkClient, storeKey: String, storage: Storage?) -> CredentialsManager,
 ) : AutoCloseable {
 
+    /**
+     * Creates an SDK entry point for the given account.
+     *
+     * @param account the tenant/application coordinates every client communicates with.
+     */
     public constructor(account: Auth0Account) : this(
         networkClient = networkClient(account),
         defaultStoreKey = defaultCredentialsStoreKey(account),

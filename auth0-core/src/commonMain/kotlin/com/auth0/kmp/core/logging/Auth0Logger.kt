@@ -5,8 +5,8 @@ import com.auth0.kmp.core.annotation.InternalAuth0Api
 /**
  * Platform logger used internally by the SDK to log diagnostic messages.
  *
- * Each message is associated with a [tag] identifying its source and a
- * human-readable [message], routed to the platform's native logging facility.
+ * Each message is associated with a tag identifying its source and a
+ * human-readable message, routed to the platform's native logging facility.
  */
 @InternalAuth0Api
 public interface Auth0Logger {
