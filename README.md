@@ -311,6 +311,7 @@ The examples above cover the common path. For per-feature depth — organization
 ephemeral sessions, passkeys, custom credential stores, DPoP, retries, and the
 full error families — see [EXAMPLES.md](./EXAMPLES.md).
 
+
 ## Modules
 
 The SDK is split into focused modules, all published under the `com.auth0.kmp`
@@ -340,7 +341,7 @@ To provide feedback or report a bug, [please raise an issue on our issue tracker
 
 ### Vulnerability Reporting
 
-Please do not report security vulnerabilities on the public GitHub issue tracker. The [Responsible Disclosure Program](https://auth0.com/whitehat) details the procedure for disclosing security issues. See [SECURITY.md](SECURITY.md).
+Please do not report security vulnerabilities on the public GitHub issue tracker. The [Responsible Disclosure Program](https://auth0.com/responsible-disclosure-policy) details the procedure for disclosing security issues. See [SECURITY.md](SECURITY.md).
 
 ### Important Note
 
