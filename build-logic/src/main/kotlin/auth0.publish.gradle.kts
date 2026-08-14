@@ -3,6 +3,7 @@ import org.gradle.api.publish.maven.tasks.GenerateMavenPom
 
 plugins {
     id("com.vanniktech.maven.publish")
+    id("org.jetbrains.dokka")
 }
 
 group = providers.gradleProperty("GROUP").get()
