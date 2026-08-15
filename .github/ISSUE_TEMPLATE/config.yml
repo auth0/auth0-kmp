@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Auth0 Community
+    url: https://community.auth0.com
+    about: Discuss this SDK in the Auth0 Community forums
+  - name: Auth0 Support
+    url: https://support.auth0.com/
+    about: Contact Auth0 Support if you have a paid subscription
+  - name: Report a security vulnerability
+    url: https://auth0.com/responsible-disclosure-policy
+    about: Do not open a public issue for security vulnerabilities
