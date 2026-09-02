@@ -1,5 +1,6 @@
 package com.auth0.kmp.core.credentials
 
+import com.auth0.kmp.core.model.APICredentials
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 
@@ -8,6 +9,7 @@ import com.auth0.kmp.core.result.Result
  * an expired or soon-to-expire access token via the refresh token first.
  */
 public interface CredentialsManager : AutoCloseable {
+
 
     /**
      * Stores [credentials], replacing any previously stored credentials.
@@ -30,7 +32,7 @@ public interface CredentialsManager : AutoCloseable {
      * @param minTtl the minimum remaining lifetime, in seconds, the access token
      *   must have to be considered valid.
      */
-    public suspend fun hasValidCredentials(minTtl: Int = 0): Boolean
+    public suspend fun hasValidCredentials(minTtl: Int = DEFAULT_MIN_TTL): Boolean
 
     /**
      * Returns the stored credentials, renewing them first when required.
@@ -46,11 +48,60 @@ public interface CredentialsManager : AutoCloseable {
      */
     public suspend fun getCredentials(
         scope: String? = null,
-        minTtl: Int = 30,
+        minTtl: Int = DEFAULT_MIN_TTL,
         parameters: Map<String, String> = emptyMap(),
         headers: Map<String, String> = emptyMap(),
         forceRefresh: Boolean = false,
     ): Result<Credentials, CredentialsManagerError>
+
+    /**
+     * Returns an access token scoped to an [audience] and optional [scope], exchanging the stored refresh
+     * token for one .
+     *
+     * @param audience the API identifier the returned token is scoped to.
+     * @param scope the scopes to request; a value different from the cached
+     *   token's scope forces a new exchange.
+     * @param minTtl the minimum remaining lifetime, in seconds, the returned
+     *   access token must have; a shorter-lived token triggers an exchange.
+     * @param parameters extra `/oauth/token` form parameters for the exchange.
+     * @param headers extra HTTP headers for the exchange request.
+     * @param forceRefresh when true, always exchanges even if a valid token is cached.
+     * @return [Result.Success] with the API credentials, or a [CredentialsManagerError].
+     */
+    public suspend fun getApiCredentials(
+        audience: String,
+        scope: String? = null,
+        minTtl: Int = DEFAULT_MIN_TTL,
+        parameters: Map<String, String> = emptyMap(),
+        headers: Map<String, String> = emptyMap(),
+        forceRefresh: Boolean = false,
+    ): Result<APICredentials, CredentialsManagerError>
+
+    /**
+     * Removes the stored API credentials for [audience] (and [scope], if given).
+     *
+     * @param audience the API identifier the stored credentials are scoped to.
+     * @param scope the scope the credentials were stored with, if any.
+     */
+    public suspend fun clearApiCredentials(
+        audience: String,
+        scope: String? = null,
+    ): Result<Unit, CredentialsManagerError>
+
+    /**
+     * Returns whether valid API credentials are stored for [audience] (and
+     * [scope], if given).
+     *
+     * @param audience the API identifier to check.
+     * @param scope the scope the credentials were stored with, if any.
+     * @param minTtl the minimum remaining lifetime, in seconds, the access token
+     *   must have to be considered valid.
+     */
+    public suspend fun hasValidApiCredentials(
+        audience: String,
+        scope: String? = null,
+        minTtl: Int = DEFAULT_MIN_TTL,
+    ): Boolean
 
     /**
      * Releases the network transport backing this manager.
@@ -61,4 +112,8 @@ public interface CredentialsManager : AutoCloseable {
      * instead.
      */
     override fun close() {}
+
+    private companion object {
+        private const val DEFAULT_MIN_TTL = 30
+    }
 }
