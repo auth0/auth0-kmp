@@ -5,6 +5,7 @@ import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.dpop.DPoPJwk
 import com.auth0.kmp.core.dpop.DPoPKeyStore
 import com.auth0.kmp.core.dpop.DPoPProofGenerator
+import com.auth0.kmp.core.model.APICredentials
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 import kotlinx.coroutines.test.runTest
@@ -307,5 +308,38 @@ class DefaultCredentialsManagerDPoPTest {
 
         assertIs<Result.Success<Unit>>(result)
         assertNull(storage.retrieve(storeKey))
+    }
+
+    @Test
+    fun clear_clears_dpop_keypair() = runTest {
+        val keyStore = FakeDPoPKeyStore(keyPresent = true)
+        val storage = storageWith(blob(credentials(), thumbprint = jkt))
+
+        val result = manager(storage, keyStore = keyStore, useDPoP = true).clearCredentials()
+
+        assertIs<Result.Success<Unit>>(result)
+        assertEquals(false, keyStore.keyPresent)
+    }
+
+    @Test
+    fun getApi_dpop_mismatch_clears_credentials_api_blob_and_keypair() = runTest {
+        val keyStore = FakeDPoPKeyStore()
+        val apiBlob = ApiCredentialsSerializer.encode(
+            mapOf(apiCredentialsKey("api", null) to APICredentials("old", "Bearer", now - 10.seconds, null)),
+        )
+        val storage = storageWith(
+            blob(expiredBearer(), thumbprint = "different-thumbprint"),
+            "$storeKey::api" to apiBlob,
+        )
+        val tokenClient = FakeTokenClient(Result.Success(credentials(expiresAt = now + 3600.seconds)))
+
+        val result = manager(storage, tokenClient, keyStore = keyStore, useDPoP = true).getApiCredentials("api")
+
+        assertIs<Result.Failure<CredentialsManagerError>>(result)
+        assertIs<CredentialsManagerError.DPoPKeyMismatch>(result.error)
+        assertNull(storage.retrieve(storeKey))
+        assertNull(storage.retrieve("$storeKey::api"))
+        assertEquals(false, keyStore.keyPresent)
+        assertEquals(0, tokenClient.callCount)
     }
 }
