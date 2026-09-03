@@ -8,6 +8,7 @@ import com.auth0.kmp.core.logging.Auth0Log
 import com.auth0.kmp.core.model.APICredentials
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
+import com.auth0.kmp.core.result.flatMap
 import com.auth0.kmp.core.result.map
 import com.auth0.kmp.core.token.RefreshTokenGrant
 import com.auth0.kmp.core.token.TokenClient
@@ -41,14 +42,14 @@ internal class DefaultCredentialsManager(
     }
 
     override suspend fun clearCredentials(): Result<Unit, CredentialsManagerError> {
-        val result = storageCall { storage.remove(storeKey) }
-        storageCall { storage.remove(apiStoreKey) }
+        val mainResult = storageCall { storage.remove(storeKey) }
+        val apiResult = storageCall { storage.remove(apiStoreKey) }
         proofGenerator?.clearKeypair()?.let { keypairResult ->
             if (keypairResult is Result.Failure) {
                 Auth0Log.e(TAG, "Failed to clear DPoP keypair on logout: ${keypairResult.error}")
             }
         }
-        return result
+        return mainResult.flatMap { apiResult }
     }
 
     override suspend fun hasValidCredentials(minTtl: Int): Boolean {

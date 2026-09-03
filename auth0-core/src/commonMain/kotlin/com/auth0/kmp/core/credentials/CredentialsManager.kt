@@ -32,7 +32,7 @@ public interface CredentialsManager : AutoCloseable {
      * @param minTtl the minimum remaining lifetime, in seconds, the access token
      *   must have to be considered valid.
      */
-    public suspend fun hasValidCredentials(minTtl: Int = DEFAULT_MIN_TTL): Boolean
+    public suspend fun hasValidCredentials(minTtl: Int = 0): Boolean
 
     /**
      * Returns the stored credentials, renewing them first when required.
@@ -100,7 +100,7 @@ public interface CredentialsManager : AutoCloseable {
     public suspend fun hasValidApiCredentials(
         audience: String,
         scope: String? = null,
-        minTtl: Int = DEFAULT_MIN_TTL,
+        minTtl: Int = 0,
     ): Boolean
 
     /**

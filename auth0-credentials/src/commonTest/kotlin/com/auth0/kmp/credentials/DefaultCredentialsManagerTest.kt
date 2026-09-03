@@ -81,6 +81,18 @@ class DefaultCredentialsManagerTest {
         assertIs<CredentialsManagerError.StoreFailed>(result.error)
     }
 
+    @Test
+    fun clear_surfaces_failure_when_only_api_blob_removal_fails() = runTest {
+        val storage = storageWith(credentials()).apply { failRemoveKey = "$storeKey::api" }
+
+        val result = manager(storage).clearCredentials()
+
+        // main blob removed, but the API-blob failure must NOT be swallowed as success
+        assertIs<Result.Failure<CredentialsManagerError>>(result)
+        assertIs<CredentialsManagerError.StoreFailed>(result.error)
+        assertNull(storage.retrieve(storeKey)) // main removal still happened (eager, not short-circuited)
+    }
+
 
     @Test
     fun hasValid_false_when_absent() = runTest {

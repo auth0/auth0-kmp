@@ -17,6 +17,7 @@ internal class FakeStorage(
 ) : Storage {
     var failOnStore = false
     var failOnRemove = false
+    var failRemoveKey: String? = null
     var failRetrieveWith: Throwable? = null
     var failStoreWith: Throwable? = null
     var removeCount = 0
@@ -35,7 +36,7 @@ internal class FakeStorage(
 
     override suspend fun remove(key: String) {
         removeCount++
-        if (failOnRemove) throw RuntimeException("remove failed")
+        if (failOnRemove || key == failRemoveKey) throw RuntimeException("remove failed")
         map.remove(key)
     }
 }
