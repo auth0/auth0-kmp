@@ -96,13 +96,17 @@ internal class DefaultCredentialsManager(
                 ?: credentials.refreshToken,
         )
 
+        val write = storageCall {
+            storage.store(storeKey, CredentialsSerializer.encode(merged, exchange.thumbprint))
+        }
+        if (write is Result.Failure) return@withAccountLock write
+
         if (willExpire(merged.expiresAt, minTtl)) {
             val lifetime = (merged.expiresAt - clock.now()).inWholeSeconds.toInt()
             return@withAccountLock Result.Failure(CredentialsManagerError.LargeMinTtl(minTtl, lifetime))
         }
 
-        storageCall { storage.store(storeKey, CredentialsSerializer.encode(merged, exchange.thumbprint)) }
-            .map { merged }
+        Result.Success(merged)
     }
 
     override suspend fun getApiCredentials(
@@ -147,22 +151,18 @@ internal class DefaultCredentialsManager(
             scope = exchanged.scope,
         )
 
-        if (willExpire(apiCredentials.expiresAt, minTtl)) {
-            val lifetime = (apiCredentials.expiresAt - clock.now()).inWholeSeconds.toInt()
-            return@withAccountLock Result.Failure(CredentialsManagerError.LargeMinTtl(minTtl, lifetime))
-        }
-
         val rotatedRefreshToken = exchanged.refreshToken?.takeIf { it.isNotBlank() }
         if (rotatedRefreshToken != null && rotatedRefreshToken != stored.credentials.refreshToken) {
             val updatedMain = stored.credentials.copy(refreshToken = rotatedRefreshToken)
-            when (
-                val write = storageCall {
-                    storage.store(storeKey, CredentialsSerializer.encode(updatedMain, exchange.thumbprint))
-                }
-            ) {
-                is Result.Failure -> return@withAccountLock write
-                is Result.Success -> Unit
+            val write = storageCall {
+                storage.store(storeKey, CredentialsSerializer.encode(updatedMain, exchange.thumbprint))
             }
+            if (write is Result.Failure) return@withAccountLock write
+        }
+
+        if (willExpire(apiCredentials.expiresAt, minTtl)) {
+            val lifetime = (apiCredentials.expiresAt - clock.now()).inWholeSeconds.toInt()
+            return@withAccountLock Result.Failure(CredentialsManagerError.LargeMinTtl(minTtl, lifetime))
         }
 
         storageCall {

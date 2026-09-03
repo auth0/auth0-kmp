@@ -174,6 +174,23 @@ class DefaultCredentialsManagerApiCredentialsTest {
         assertNull(storage.retrieve(apiStoreKey))
     }
 
+    @Test
+    fun getApi_persists_rotated_refresh_token_even_when_LargeMinTtl() = runTest {
+        val storage = seed(credentials(refreshToken = "old-rt"))
+        // exchanged lifetime (30s) < minTtl (60) → LargeMinTtl, and the RT rotated
+        val exchanged = credentials(accessToken = "api-at", expiresAt = now + 30.seconds, refreshToken = "rotated-rt")
+        val tokenClient = FakeTokenClient(Result.Success(exchanged))
+
+        val result = manager(storage, tokenClient).getApiCredentials("api", minTtl = 60)
+
+        assertIs<Result.Failure<CredentialsManagerError>>(result)
+        assertIs<CredentialsManagerError.LargeMinTtl>(result.error)
+        // rotated RT written back to the main store despite the failure — no lockout
+        assertEquals("rotated-rt", CredentialsSerializer.decode(storage.retrieve(storeKey)!!).credentials.refreshToken)
+        // and the sub-minTtl API token was NOT cached
+        assertNull(storage.retrieve(apiStoreKey))
+    }
+
     // ---- getApiCredentials: write-back & isolation ----
 
     @Test
