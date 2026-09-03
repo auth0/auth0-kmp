@@ -81,6 +81,18 @@ class DefaultCredentialsManagerTest {
         assertIs<CredentialsManagerError.StoreFailed>(result.error)
     }
 
+    @Test
+    fun clear_surfaces_failure_when_only_api_blob_removal_fails() = runTest {
+        val storage = storageWith(credentials()).apply { failRemoveKey = "$storeKey::api" }
+
+        val result = manager(storage).clearCredentials()
+
+        // main blob removed, but the API-blob failure must NOT be swallowed as success
+        assertIs<Result.Failure<CredentialsManagerError>>(result)
+        assertIs<CredentialsManagerError.StoreFailed>(result.error)
+        assertNull(storage.retrieve(storeKey)) // main removal still happened (eager, not short-circuited)
+    }
+
 
     @Test
     fun hasValid_false_when_absent() = runTest {
@@ -195,6 +207,22 @@ class DefaultCredentialsManagerTest {
         assertIs<CredentialsManagerError.LargeMinTtl>(error)
         assertEquals(60, error.minTtl)
         assertEquals(30, error.lifetime)
+    }
+
+    @Test
+    fun get_persists_rotated_refresh_token_even_when_LargeMinTtl() = runTest {
+        val stored = credentials(expiresAt = now - 10.seconds, refreshToken = "old-rt")
+        // renewed lifetime (30s) < minTtl (60) → LargeMinTtl, and the RT rotated
+        val renewed = credentials(accessToken = "new-at", expiresAt = now + 30.seconds, refreshToken = "rotated-rt")
+        val storage = storageWith(stored)
+        val tokenClient = FakeTokenClient(Result.Success(renewed))
+
+        val result = manager(storage, tokenClient).getCredentials(minTtl = 60)
+
+        assertIs<Result.Failure<CredentialsManagerError>>(result)
+        assertIs<CredentialsManagerError.LargeMinTtl>(result.error)
+        // the rotated RT survived the failure — the caller is not locked out on the next renewal
+        assertEquals("rotated-rt", CredentialsSerializer.decode(storage.retrieve(storeKey)!!).credentials.refreshToken)
     }
 
     @Test

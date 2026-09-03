@@ -11,7 +11,7 @@ import kotlin.time.Duration.Companion.seconds
 @InternalAuth0Api
 public data class TokenResponse(
     @SerialName("access_token") val accessToken: String,
-    @SerialName("id_token") val idToken: String,
+    @SerialName("id_token") val idToken: String? = null,
     @SerialName("token_type") val tokenType: String,
     @SerialName("expires_in") val expiresIn: Long,
     @SerialName("refresh_token") val refreshToken: String? = null,
@@ -22,7 +22,7 @@ public data class TokenResponse(
 public fun TokenResponse.toCredentials(clock: Clock): Credentials =
     Credentials(
         accessToken = accessToken,
-        idToken = idToken,
+        idToken = idToken.orEmpty(),
         tokenType = tokenType,
         expiresAt = clock.now() + expiresIn.seconds,
         refreshToken = refreshToken,

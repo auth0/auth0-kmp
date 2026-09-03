@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     val state by viewModel.state.collectAsState()
                     val signupState by viewModel.signupState.collectAsState()
+                    val apiCredentialsState by viewModel.apiCredentialsState.collectAsState()
 
                     LaunchedEffect(Unit) {
                         viewModel.restoreSession()
@@ -124,7 +125,13 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable<Welcome> {
-                            WelcomeScreen(state = state, onLogout = viewModel::logout)
+                            WelcomeScreen(
+                                state = state,
+                                apiCredentialsState = apiCredentialsState,
+                                defaultApiAudience = viewModel.defaultApiAudience,
+                                onGetApiCredentials = viewModel::getApiCredentials,
+                                onLogout = viewModel::logout,
+                            )
                         }
                     }
                 }

@@ -54,6 +54,10 @@ public class DPoPProofGenerator(
     public fun jktIfPresent(): Result<String?, DPoPError> =
         runCatching { keyStore.publicJwkOrNull()?.thumbprint() }.toDPoPResult()
 
+    /** Removes the DPoP keypair from the store, if present. */
+    public fun clearKeypair(): Result<Unit, DPoPError> =
+        runCatching { keyStore.clear() }.toDPoPResult()
+
     /**
      * Generates a DPoP proof for the given request, creating the keypair if needed.
      *

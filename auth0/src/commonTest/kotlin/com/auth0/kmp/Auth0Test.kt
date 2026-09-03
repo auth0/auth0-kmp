@@ -12,6 +12,7 @@ import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.credentials.CredentialsManager
 import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.error.TransportError
+import com.auth0.kmp.core.model.APICredentials
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.model.UserInfo
 import com.auth0.kmp.core.result.Result
@@ -137,6 +138,26 @@ private class FakeCredentialsManager : CredentialsManager {
         headers: Map<String, String>,
         forceRefresh: Boolean,
     ): Result<Credentials, CredentialsManagerError> = error("not used")
+
+    override suspend fun getApiCredentials(
+        audience: String,
+        scope: String?,
+        minTtl: Int,
+        parameters: Map<String, String>,
+        headers: Map<String, String>,
+        forceRefresh: Boolean,
+    ): Result<APICredentials, CredentialsManagerError> = error("not used")
+
+    override suspend fun clearApiCredentials(
+        audience: String,
+        scope: String?,
+    ): Result<Unit, CredentialsManagerError> = error("not used")
+
+    override suspend fun hasValidApiCredentials(
+        audience: String,
+        scope: String?,
+        minTtl: Int,
+    ): Boolean = error("not used")
 }
 
 /** Records which network client each builder saw and how many times it ran. */

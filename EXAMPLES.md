@@ -41,6 +41,9 @@ val auth0 = Auth0(account)
   - [Retrieve credentials](#retrieve-credentials)
   - [Check for stored credentials](#check-for-stored-credentials)
   - [Force a renewal](#force-a-renewal)
+  - [API credentials](#api-credentials)
+  - [Check for stored API credentials](#check-for-stored-api-credentials)
+  - [Clear API credentials](#clear-api-credentials)
   - [Clear credentials](#clear-credentials)
   - [Multiple credential stores](#multiple-credential-stores)
   - [Custom storage](#custom-storage)
@@ -500,6 +503,76 @@ if (credentialsManager.hasValidCredentials()) {
 ```kotlin
 credentialsManager.getCredentials(forceRefresh = true)
 ```
+
+### API credentials
+
+When the user logs in, you can request an access token for a specific API by
+passing its API identifier as the [audience](#specify-an-audience) value. The
+access token in the resulting credentials can then be used to make authenticated
+requests to that API.
+
+However, if you need an access token for a different API, you can exchange the
+[refresh token](https://auth0.com/docs/secure/tokens/refresh-tokens) for
+credentials containing an access token specific to this other API.
+
+```kotlin
+when (val result = credentialsManager.getApiCredentials(audience = "https://api.example.com")) {
+    is Result.Success -> {
+        val apiCredentials = result.data
+        callApi(apiCredentials.accessToken)
+    }
+    is Result.Failure -> { /* result.error is a CredentialsManagerError */ }
+}
+```
+
+The returned `APICredentials` carries only the `accessToken`, `tokenType`,
+`expiresAt`, and granted `scope` — it holds no ID or refresh token. Each audience
+(and scope) is cached separately, so a later call for the same audience returns
+the cached token until it nears expiry.
+
+To request specific scopes, or to require a minimum remaining lifetime:
+
+```kotlin
+credentialsManager.getApiCredentials(
+    audience = "https://api.example.com",
+    scope = "read:reports write:reports",
+    minTtl = 60, // seconds the access token must still be valid for
+)
+```
+
+Pass `forceRefresh = true` to bypass the cache and always exchange. If `minTtl`
+cannot be satisfied even after an exchange, the call fails with
+`CredentialsManagerError.LargeMinTtl`.
+
+> [!NOTE]
+> This needs a stored refresh token, so log in with `offline_access` in your
+> scope. If the exchange returns a rotated refresh token, the manager writes it
+> back to the stored credentials for you.
+
+### Check for stored API credentials
+
+Returns whether valid API credentials are cached for an audience, without
+exchanging anything.
+
+```kotlin
+if (credentialsManager.hasValidApiCredentials(audience = "https://api.example.com")) {
+    // a live token is cached
+}
+```
+
+### Clear API credentials
+
+Removes the cached token for one audience (and scope), leaving the main
+credentials and other audiences untouched.
+
+```kotlin
+credentialsManager.clearApiCredentials(audience = "https://api.example.com")
+```
+
+> [!NOTE]
+> [`clearCredentials()`](#clear-credentials) already removes every cached API
+> token along with the main credentials, so you only need this to drop a single
+> audience.
 
 ### Clear credentials
 
