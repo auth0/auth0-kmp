@@ -1,6 +1,6 @@
 package com.auth0.kmp.credentials
 
-import com.auth0.kmp.core.model.APICredentials
+import com.auth0.kmp.core.model.ApiCredentials
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.time.Instant
@@ -19,7 +19,7 @@ internal object ApiCredentialsSerializer {
     )
 
 
-    fun encode(entries: Map<String, APICredentials>): String =
+    fun encode(entries: Map<String, ApiCredentials>): String =
         json.encodeToString(
             entries.mapValues { (_, credentials) ->
                 Dto(
@@ -31,10 +31,10 @@ internal object ApiCredentialsSerializer {
             },
         )
 
-    fun decode(value: String): Map<String, APICredentials> {
+    fun decode(value: String): Map<String, ApiCredentials> {
         val dtos = json.decodeFromString<Map<String, Dto>>(value)
         return dtos.mapValues { (_, dto) ->
-            APICredentials(
+            ApiCredentials(
                 accessToken = dto.accessToken,
                 tokenType = dto.tokenType,
                 expiresAt = Instant.fromEpochSeconds(dto.expiresAtEpochSeconds),

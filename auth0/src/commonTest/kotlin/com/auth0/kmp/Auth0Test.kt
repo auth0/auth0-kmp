@@ -12,7 +12,7 @@ import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.credentials.CredentialsManager
 import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.error.TransportError
-import com.auth0.kmp.core.model.APICredentials
+import com.auth0.kmp.core.model.ApiCredentials
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.model.UserInfo
 import com.auth0.kmp.core.result.Result
@@ -146,7 +146,7 @@ private class FakeCredentialsManager : CredentialsManager {
         parameters: Map<String, String>,
         headers: Map<String, String>,
         forceRefresh: Boolean,
-    ): Result<APICredentials, CredentialsManagerError> = error("not used")
+    ): Result<ApiCredentials, CredentialsManagerError> = error("not used")
 
     override suspend fun clearApiCredentials(
         audience: String,
