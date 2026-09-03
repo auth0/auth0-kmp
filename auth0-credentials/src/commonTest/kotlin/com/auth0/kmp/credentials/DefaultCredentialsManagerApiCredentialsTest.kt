@@ -2,7 +2,7 @@ package com.auth0.kmp.credentials
 
 import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.error.TransportError
-import com.auth0.kmp.core.model.APICredentials
+import com.auth0.kmp.core.model.ApiCredentials
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 import kotlinx.coroutines.test.runTest
@@ -36,9 +36,9 @@ class DefaultCredentialsManagerApiCredentialsTest {
         tokenType: String = "Bearer",
         expiresAt: Instant,
         scope: String? = null,
-    ) = APICredentials(accessToken, tokenType, expiresAt, scope)
+    ) = ApiCredentials(accessToken, tokenType, expiresAt, scope)
 
-    private fun seed(main: Credentials, api: Map<String, APICredentials> = emptyMap()): FakeStorage {
+    private fun seed(main: Credentials, api: Map<String, ApiCredentials> = emptyMap()): FakeStorage {
         val entries = mutableMapOf(storeKey to CredentialsSerializer.encode(main))
         if (api.isNotEmpty()) entries[apiStoreKey] = ApiCredentialsSerializer.encode(api)
         return FakeStorage(entries)
@@ -54,7 +54,7 @@ class DefaultCredentialsManagerApiCredentialsTest {
 
         val result = manager(storage, tokenClient).getApiCredentials("api", "read:things")
 
-        assertIs<Result.Success<APICredentials>>(result)
+        assertIs<Result.Success<ApiCredentials>>(result)
         assertEquals(cached, result.data)
         assertEquals(0, tokenClient.callCount)
     }
@@ -67,7 +67,7 @@ class DefaultCredentialsManagerApiCredentialsTest {
 
         val result = manager(storage, tokenClient).getApiCredentials("api", "read:things")
 
-        assertIs<Result.Success<APICredentials>>(result)
+        assertIs<Result.Success<ApiCredentials>>(result)
         assertEquals("api-at", result.data.accessToken)
         assertEquals(1, tokenClient.callCount)
         assertEquals("refresh_token", tokenClient.lastGrantParameters?.str("grant_type"))
@@ -88,7 +88,7 @@ class DefaultCredentialsManagerApiCredentialsTest {
 
         val result = manager(storage, tokenClient).getApiCredentials("api")
 
-        assertIs<Result.Success<APICredentials>>(result)
+        assertIs<Result.Success<ApiCredentials>>(result)
         assertEquals("new", result.data.accessToken)
         assertEquals(1, tokenClient.callCount)
     }
@@ -103,7 +103,7 @@ class DefaultCredentialsManagerApiCredentialsTest {
 
         val result = manager(storage, tokenClient).getApiCredentials("api", forceRefresh = true)
 
-        assertIs<Result.Success<APICredentials>>(result)
+        assertIs<Result.Success<ApiCredentials>>(result)
         assertEquals("fresh", result.data.accessToken)
         assertEquals(1, tokenClient.callCount)
     }
@@ -118,7 +118,7 @@ class DefaultCredentialsManagerApiCredentialsTest {
 
         val result = manager(storage, tokenClient).getApiCredentials("api", minTtl = 60)
 
-        assertIs<Result.Success<APICredentials>>(result)
+        assertIs<Result.Success<ApiCredentials>>(result)
         assertEquals("fresh", result.data.accessToken)
         assertEquals(1, tokenClient.callCount)
     }
@@ -201,7 +201,7 @@ class DefaultCredentialsManagerApiCredentialsTest {
 
         val result = manager(storage, tokenClient).getApiCredentials("api")
 
-        assertIs<Result.Success<APICredentials>>(result)
+        assertIs<Result.Success<ApiCredentials>>(result)
         assertEquals("rotated-rt", CredentialsSerializer.decode(storage.retrieve(storeKey)!!).credentials.refreshToken)
         val cached = ApiCredentialsSerializer.decode(storage.retrieve(apiStoreKey)!!)
         assertEquals("api-at", cached[apiCredentialsKey("api", null)]?.accessToken)
@@ -217,7 +217,7 @@ class DefaultCredentialsManagerApiCredentialsTest {
 
         val result = manager(storage, tokenClient).getApiCredentials("api", "write")
 
-        assertIs<Result.Success<APICredentials>>(result)
+        assertIs<Result.Success<ApiCredentials>>(result)
         assertEquals("write-at", result.data.accessToken)
         assertEquals(1, tokenClient.callCount)
         val cached = ApiCredentialsSerializer.decode(storage.retrieve(apiStoreKey)!!)

@@ -525,7 +525,7 @@ when (val result = credentialsManager.getApiCredentials(audience = "https://api.
 }
 ```
 
-The returned `APICredentials` carries only the `accessToken`, `tokenType`,
+The returned `ApiCredentials` carries only the `accessToken`, `tokenType`,
 `expiresAt`, and granted `scope` — it holds no ID or refresh token. Each audience
 (and scope) is cached separately, so a later call for the same audience returns
 the cached token until it nears expiry.

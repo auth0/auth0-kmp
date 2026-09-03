@@ -5,7 +5,7 @@ import com.auth0.kmp.core.credentials.CredentialsManager
 import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.dpop.DPoPProofGenerator
 import com.auth0.kmp.core.logging.Auth0Log
-import com.auth0.kmp.core.model.APICredentials
+import com.auth0.kmp.core.model.ApiCredentials
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.result.flatMap
@@ -117,7 +117,7 @@ internal class DefaultCredentialsManager(
         parameters: Map<String, String>,
         headers: Map<String, String>,
         forceRefresh: Boolean,
-    ): Result<APICredentials, CredentialsManagerError> = withAccountLock {
+    ): Result<ApiCredentials, CredentialsManagerError> = withAccountLock {
         val entryKey = apiCredentialsKey(audience, scope)
 
         val cachedBlob = when (val read = readApiCredentials()) {
@@ -145,7 +145,7 @@ internal class DefaultCredentialsManager(
         }
         val exchanged = exchange.credentials
 
-        val apiCredentials = APICredentials(
+        val apiCredentials = ApiCredentials(
             accessToken = exchanged.accessToken,
             tokenType = exchanged.tokenType,
             expiresAt = exchanged.expiresAt,
@@ -260,7 +260,7 @@ internal class DefaultCredentialsManager(
      * On a crypto failure the blob is dropped (device key invalidated); a decode failure is
      * treated as an empty cache so the next call re-exchanges rather than failing permanently.
      */
-    private suspend fun readApiCredentials(): Result<Map<String, APICredentials>, CredentialsManagerError> =
+    private suspend fun readApiCredentials(): Result<Map<String, ApiCredentials>, CredentialsManagerError> =
         when (val read = storageCall { storage.retrieve(apiStoreKey) }) {
             is Result.Success -> {
                 val blob = read.data ?: return Result.Success(emptyMap())

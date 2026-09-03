@@ -11,13 +11,13 @@ import kotlin.time.Instant
  * @param expiresAt the instant the access token expires.
  * @param scope the scopes granted by Auth0, if any.
  */
-public data class APICredentials(
+public data class ApiCredentials(
     val accessToken: String,
     val tokenType: String,
     val expiresAt: Instant,
     val scope: String? = null,
 ) {
     override fun toString(): String {
-        return "APICredentials(accessToken='xxxxx', type='$tokenType', expiresAt='$expiresAt', scope='$scope')"
+        return "ApiCredentials(accessToken='xxxxx', type='$tokenType', expiresAt='$expiresAt', scope='$scope')"
     }
 }

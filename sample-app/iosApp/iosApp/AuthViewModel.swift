@@ -63,33 +63,9 @@ final class AuthViewModel {
         }
     }
 
-    // Drives the API-credentials section on the Welcome screen only. Kept separate
-    // from `State` so exchanging an audience-scoped token never disturbs the
-    // logged-in session or the success→Welcome navigation.
-    enum ApiCredentialsState: Equatable {
-        case idle
-        case success(APICredentials)
-        case failure(any Auth0Error)
-
-        static func == (lhs: ApiCredentialsState, rhs: ApiCredentialsState) -> Bool {
-            switch (lhs, rhs) {
-            case (.idle, .idle):
-                return true
-            case let (.success(l), .success(r)):
-                return l.isEqual(r)
-            case let (.failure(l), .failure(r)):
-                return (l as? NSObjectProtocol)?.isEqual(r) ?? false
-            default:
-                return false
-            }
-        }
-    }
-
     private(set) var state: State = .restoring
 
     private(set) var signupState: SignupState = .idle
-
-    private(set) var apiCredentialsState: ApiCredentialsState = .idle
 
     // Remembers the credentials entered on the sign-up screen so the confirmation
     // screen's "Log in" button can complete the sign-up → login hop without asking
@@ -109,10 +85,6 @@ final class AuthViewModel {
     private let credentialsManager: (any CredentialsManager)?
 
     private let audience = "https://firstresourceserver/"
-
-    // Pre-fills the audience input on the Welcome screen so the API-credentials
-    // exchange is one-tap runnable against the tenant this sample targets.
-    var defaultApiAudience: String { audience }
 
     init(domain: String, clientId: String) {
         isConfigured = !domain.isEmpty && !clientId.isEmpty
@@ -269,44 +241,6 @@ final class AuthViewModel {
                  } catch {
                      state = .idle
                  }
-    }
-
-    // Exchanges the stored refresh token for an access token scoped to another API
-    // (the given audience/scope), via the MRRT flow. A blank scope is sent as nil so
-    // the API's default scopes apply. The full network exchange is visible in the
-    // BODY-level network log; here we log the masked APICredentials (its description
-    // hides the access token by design) so a live bearer token never lands in the
-    // system log.
-    func getApiCredentials(audience: String, scope: String) async {
-        guard let credentialsManager else { return }
-        do {
-            let result = try await credentialsManager.getApiCredentials(
-                audience: audience,
-                scope: scope.isEmpty ? nil : scope,
-                minTtl: 30,
-                parameters: [:],
-                headers: [:],
-                forceRefresh: false
-            )
-            switch onEnum(of: result) {
-            case .success(let success):
-                if let apiCredentials = success.data as? APICredentials {
-                    Auth0Log.shared.d(tag: "Auth0Sample", message: "Obtained API credentials: \(apiCredentials)")
-                    apiCredentialsState = .success(apiCredentials)
-                } else {
-                    apiCredentialsState = .idle
-                }
-            case .failure(let failure):
-                if let error = failure.error as? CredentialsManagerError {
-                    Auth0Log.shared.e(tag: "Auth0Sample", message: "Failed to obtain API credentials: \(error)", error: nil)
-                    apiCredentialsState = .failure(error)
-                } else {
-                    apiCredentialsState = .idle
-                }
-            }
-        } catch {
-            apiCredentialsState = .idle
-        }
     }
 
     // Creates a database user. On success we land on the confirmation screen

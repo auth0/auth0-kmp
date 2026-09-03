@@ -1,6 +1,6 @@
 package com.auth0.kmp.core.credentials
 
-import com.auth0.kmp.core.model.APICredentials
+import com.auth0.kmp.core.model.ApiCredentials
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 
@@ -75,7 +75,7 @@ public interface CredentialsManager : AutoCloseable {
         parameters: Map<String, String> = emptyMap(),
         headers: Map<String, String> = emptyMap(),
         forceRefresh: Boolean = false,
-    ): Result<APICredentials, CredentialsManagerError>
+    ): Result<ApiCredentials, CredentialsManagerError>
 
     /**
      * Removes the stored API credentials for [audience] (and [scope], if given).

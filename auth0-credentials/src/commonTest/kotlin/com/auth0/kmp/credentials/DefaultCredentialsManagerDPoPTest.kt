@@ -5,7 +5,7 @@ import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.dpop.DPoPJwk
 import com.auth0.kmp.core.dpop.DPoPKeyStore
 import com.auth0.kmp.core.dpop.DPoPProofGenerator
-import com.auth0.kmp.core.model.APICredentials
+import com.auth0.kmp.core.model.ApiCredentials
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 import kotlinx.coroutines.test.runTest
@@ -325,7 +325,7 @@ class DefaultCredentialsManagerDPoPTest {
     fun getApi_dpop_mismatch_clears_credentials_api_blob_and_keypair() = runTest {
         val keyStore = FakeDPoPKeyStore()
         val apiBlob = ApiCredentialsSerializer.encode(
-            mapOf(apiCredentialsKey("api", null) to APICredentials("old", "Bearer", now - 10.seconds, null)),
+            mapOf(apiCredentialsKey("api", null) to ApiCredentials("old", "Bearer", now - 10.seconds, null)),
         )
         val storage = storageWith(
             blob(expiredBearer(), thumbprint = "different-thumbprint"),

@@ -14,8 +14,6 @@ import com.auth0.kmp.core.NetworkingConfiguration
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.error.Auth0Error
-import com.auth0.kmp.core.logging.Auth0Log
-import com.auth0.kmp.core.model.APICredentials
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.credentials.credentialsManager
@@ -48,15 +46,6 @@ sealed interface SignupUiState {
     data class Failure(val error: Auth0Error) : SignupUiState
 }
 
-// Drives the API-credentials section on the Welcome screen only. Kept separate
-// from LoginUiState so exchanging an audience-scoped token never disturbs the
-// logged-in session or the Success->Welcome navigation.
-sealed interface ApiCredentialsUiState {
-    data object Idle : ApiCredentialsUiState
-    data class Success(val apiCredentials: APICredentials) : ApiCredentialsUiState
-    data class Failure(val error: Auth0Error) : ApiCredentialsUiState
-}
-
 private enum class LoginMethod { Embedded, WebAuth, Passkey }
 
 // Wraps a non-Auth0 failure (a cancelled/failed passkey ceremony) as an Auth0Error
@@ -85,10 +74,6 @@ class AuthViewModel(domain: String, clientId: String) : ViewModel() {
 
     private val audience = "https://firstresourceserver/"
 
-    // Pre-fills the audience input on the Welcome screen so the API-credentials
-    // exchange is one-tap runnable against the tenant this sample targets.
-    val defaultApiAudience: String = audience
-
     private val client = account?.let { authenticationClient(it) }
     private val webClient = account?.let { webAuthClient(it) }
     private val credentialsManager = account?.let { credentialsManager(it) }
@@ -98,9 +83,6 @@ class AuthViewModel(domain: String, clientId: String) : ViewModel() {
 
     private val _signupState = MutableStateFlow<SignupUiState>(SignupUiState.Idle)
     val signupState: StateFlow<SignupUiState> = _signupState.asStateFlow()
-
-    private val _apiCredentialsState = MutableStateFlow<ApiCredentialsUiState>(ApiCredentialsUiState.Idle)
-    val apiCredentialsState: StateFlow<ApiCredentialsUiState> = _apiCredentialsState.asStateFlow()
 
     // Retains the sign-up inputs so the confirmation screen's "Log in" can auto-
     // authenticate the just-created user without re-prompting for a password.
@@ -344,39 +326,9 @@ class AuthViewModel(domain: String, clientId: String) : ViewModel() {
         }
     }
 
-    // Exchanges the stored refresh token for an access token scoped to another API
-    // (the given audience/scope), via the MRRT flow. A blank scope is sent as null
-    // so the API's default scopes apply. The full network exchange is visible in the
-    // BODY-level network log; here we log the masked APICredentials (its toString()
-    // hides the access token by design) so a live bearer token never lands in logcat.
-    fun getApiCredentials(audience: String, scope: String) {
-        val credentialsManager = credentialsManager ?: return
-        viewModelScope.launch {
-            val result = credentialsManager.getApiCredentials(
-                audience = audience,
-                scope = scope.ifBlank { null },
-            )
-            _apiCredentialsState.value = when (result) {
-                is Result.Success -> {
-                    Auth0Log.d(TAG, "Obtained API credentials: ${result.data}")
-                    ApiCredentialsUiState.Success(result.data)
-                }
-
-                is Result.Failure -> {
-                    Auth0Log.e(TAG, "Failed to obtain API credentials: ${result.error}")
-                    ApiCredentialsUiState.Failure(result.error)
-                }
-            }
-        }
-    }
-
     override fun onCleared() {
         super.onCleared()
         client?.close()
         webClient?.close()
-    }
-
-    private companion object {
-        private const val TAG = "Auth0Sample"
     }
 }
