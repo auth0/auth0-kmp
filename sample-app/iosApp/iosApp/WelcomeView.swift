@@ -10,6 +10,14 @@ struct WelcomeView: View {
 
     let viewModel: AuthViewModel
 
+    @State private var audience: String
+    @State private var scope: String = ""
+
+    init(viewModel: AuthViewModel) {
+        self.viewModel = viewModel
+        _audience = State(initialValue: viewModel.defaultApiAudience)
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: Spacing.md) {
@@ -27,6 +35,10 @@ struct WelcomeView: View {
                     credentialRow("Refresh token", credentials.refreshToken ?? "— not granted")
                     credentialRow("Scope", credentials.scope ?? "—")
                 }
+
+                Spacer(minLength: Spacing.md)
+
+                apiCredentialsSection
 
                 Spacer(minLength: Spacing.lg)
 
@@ -53,6 +65,59 @@ struct WelcomeView: View {
     private var loggedInCredentials: Credentials? {
         if case .success(let credentials) = viewModel.state { return credentials }
         return nil
+    }
+
+    // Exchanges the stored refresh token for an access token scoped to another API.
+    // Takes an audience (pre-filled) and an optional scope, then shows the resulting
+    // APICredentials or the error.
+    @ViewBuilder
+    private var apiCredentialsSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            Text("API credentials")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            TextField("Audience", text: $audience)
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled(true)
+                .textInputAutocapitalization(.never)
+            TextField("Scope (optional)", text: $scope)
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled(true)
+                .textInputAutocapitalization(.never)
+
+            Button {
+                Task { await viewModel.getApiCredentials(audience: audience, scope: scope) }
+            } label: {
+                Text("Get API credentials")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: Sizes.buttonHeight)
+                    .foregroundStyle(Color.brandOnPrimary)
+                    .background(Color.brandPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: Sizes.cornerLarge))
+            }
+            .disabled(audience.isEmpty)
+
+            switch viewModel.apiCredentialsState {
+            case .idle:
+                EmptyView()
+            case .success(let apiCredentials):
+                tokenField("API access token", apiCredentials.accessToken)
+                credentialRow("Token type", apiCredentials.tokenType)
+                credentialRow("Expires at", String(describing: apiCredentials.expiresAt))
+                credentialRow("Expires in", apiExpiresIn(apiCredentials))
+                credentialRow("Scope", apiCredentials.scope ?? "—")
+            case .failure(let error):
+                credentialRow("Error", String(describing: error))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func apiExpiresIn(_ apiCredentials: APICredentials) -> String {
+        let secondsLeft = apiCredentials.expiresAt.epochSeconds - Int64(Date().timeIntervalSince1970)
+        return secondsLeft > 0 ? "\(secondsLeft) s" : "expired"
     }
 
     // Kotlin's `Instant` exposes `epochSeconds`; compare to now for a human delta.
