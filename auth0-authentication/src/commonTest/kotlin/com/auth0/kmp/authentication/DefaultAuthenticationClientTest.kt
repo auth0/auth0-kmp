@@ -4,6 +4,7 @@ import com.auth0.kmp.authentication.error.AuthenticationError
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.model.SsoCredentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.token.TokenClient
@@ -72,6 +73,13 @@ private class FakeTokenClient(
         lastRetryPolicy = retryPolicy
         return outcome
     }
+
+    override suspend fun fetchSsoCredentials(
+        grant: TokenGrant,
+        headers: Map<String, String>,
+        retryPolicy: RetryPolicy,
+    ): Result<SsoCredentials, TransportError> =
+        throw UnsupportedOperationException("fetchSsoCredentials is not exercised by these tests")
 }
 
 private class FakeIdTokenValidator(

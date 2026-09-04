@@ -2,6 +2,7 @@ package com.auth0.kmp.credentials
 
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.model.SsoCredentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.token.TokenClient
 import com.auth0.kmp.core.token.TokenGrant
@@ -42,10 +43,13 @@ internal class FakeStorage(
 }
 
 internal class FakeTokenClient(
-    private val outcome: Result<Credentials, TransportError>,
+    private val outcome: Result<Credentials, TransportError> = Result.Success(credentials()),
     private val delayGate: Mutex? = null,
+    private val ssoOutcome: Result<SsoCredentials, TransportError> = Result.Success(ssoCredentials()),
 ) : TokenClient {
     var callCount = 0
+        private set
+    var ssoCallCount = 0
         private set
     var lastGrantParameters: JsonObject? = null
         private set
@@ -66,6 +70,19 @@ internal class FakeTokenClient(
         lastRetryPolicy = retryPolicy
         return outcome
     }
+
+    override suspend fun fetchSsoCredentials(
+        grant: TokenGrant,
+        headers: Map<String, String>,
+        retryPolicy: RetryPolicy,
+    ): Result<SsoCredentials, TransportError> {
+        delayGate?.withLock { }
+        ssoCallCount++
+        lastGrantParameters = grant.parameters
+        lastHeaders = headers
+        lastRetryPolicy = retryPolicy
+        return ssoOutcome
+    }
 }
 
 internal class MutableClock(var instant: Instant) : Clock {
@@ -84,4 +101,18 @@ internal fun credentials(
     expiresAt = expiresAt,
     refreshToken = refreshToken,
     scope = scope,
+)
+
+internal fun ssoCredentials(
+    sessionTransferToken: String = "stt",
+    issuedTokenType: String = "urn:ietf:params:oauth:token-type:session_transfer",
+    expiresAt: Instant = Instant.fromEpochSeconds(10_000),
+    idToken: String = "new-it",
+    refreshToken: String? = null,
+): SsoCredentials = SsoCredentials(
+    sessionTransferToken = sessionTransferToken,
+    issuedTokenType = issuedTokenType,
+    expiresAt = expiresAt,
+    idToken = idToken,
+    refreshToken = refreshToken,
 )
