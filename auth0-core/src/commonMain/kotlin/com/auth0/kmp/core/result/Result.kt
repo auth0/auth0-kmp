@@ -38,6 +38,17 @@ fun <D, E : Auth0Error> Result<D, E>.getOrNull(): D? =
     }
 
 /**
+ * Returns the success data, or runs [onFailure] with the [Result.Failure]. Because [onFailure]
+ * returns [Nothing], it must transfer control out (e.g. `return`), letting a caller unwrap the
+ * success value on one line without a `when`.
+ */
+inline fun <D, E : Auth0Error> Result<D, E>.getOrElse(onFailure: (Result.Failure<E>) -> Nothing): D =
+    when (this) {
+        is Result.Success -> data
+        is Result.Failure -> onFailure(this)
+    }
+
+/**
  * Transforms the success data with [transform], leaving a [Result.Failure]
  * untouched. The error type is preserved.
  */
