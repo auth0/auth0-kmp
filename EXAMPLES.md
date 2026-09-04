@@ -33,6 +33,7 @@ val auth0 = Auth0(account)
   - [Reset a password](#reset-a-password)
   - [Retrieve user information](#retrieve-user-information)
   - [Renew credentials](#renew-credentials)
+  - [Get SSO credentials](#get-sso-credentials)
   - [Revoke a refresh token](#revoke-a-refresh-token)
   - [Passkeys](#passkeys)
   - [Authentication API errors](#authentication-api-errors)
@@ -356,7 +357,7 @@ Exchanges a refresh token for fresh credentials.
 
 ```kotlin
 val result = auth0.authentication.renew(
-    refreshToken = credentials.refreshToken!!,
+    refreshToken = refreshToken,
 )
 ```
 
@@ -366,6 +367,32 @@ granted originally will fail.
 > [!TIP]
 > If you use the [Credentials Manager](#credentials-manager-android--ios), you do
 > not need to call this — `getCredentials()` renews expired credentials for you.
+
+### Get SSO credentials
+
+Exchanges a refresh token for a single-use, short-lived **session-transfer
+token**, so a native session can be continued on the web. Send the returned
+token to your website — as a query parameter or a cookie — when opening it from
+your app; the site then redirects to Auth0's `/authorize` endpoint to establish
+a web session without asking the user to sign in again.
+
+```kotlin
+val result = auth0.authentication.ssoExchange(
+    refreshToken = credentials.refreshToken!!,
+)
+```
+
+The refresh token must have been issued with the `offline_access` scope. On
+success the `SsoCredentials` carries the `sessionTransferToken`, its
+`issuedTokenType`, `expiresAt`, a fresh `idToken`, and — if refresh-token
+rotation is enabled — a rotated `refreshToken` you must persist in place of the
+old one.
+
+> [!TIP]
+> If you use the [Credentials Manager](#credentials-manager-android--ios), call
+> [`getSsoCredentials()`](#web-single-sign-on-session-transfer) instead. It reads
+> the stored refresh token, serializes concurrent calls, and writes back the
+> rotated refresh token and new ID token for you.
 
 ### Revoke a refresh token
 

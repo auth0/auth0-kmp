@@ -55,13 +55,28 @@ private fun credentials(
     scope = scope,
 )
 
+private fun ssoCredentials(
+    sessionTransferToken: String = "stt",
+    issuedTokenType: String = "urn:ietf:params:oauth:token-type:session_transfer",
+    idToken: String = "new-it",
+    refreshToken: String? = null,
+): SsoCredentials = SsoCredentials(
+    sessionTransferToken = sessionTransferToken,
+    issuedTokenType = issuedTokenType,
+    expiresAt = Instant.fromEpochSeconds(10_000),
+    idToken = idToken,
+    refreshToken = refreshToken,
+)
+
 @OptIn(InternalAuth0Api::class)
 private class FakeTokenClient(
     private val outcome: Result<Credentials, TransportError>,
+    private val ssoOutcome: Result<SsoCredentials, TransportError> = Result.Success(ssoCredentials()),
 ) : TokenClient {
     var lastGrant: TokenGrant? = null
     var lastHeaders: Map<String, String>? = null
     var lastRetryPolicy: RetryPolicy? = null
+    var ssoCallCount: Int = 0
 
     override suspend fun fetchToken(
         grant: TokenGrant,
@@ -78,8 +93,13 @@ private class FakeTokenClient(
         grant: TokenGrant,
         headers: Map<String, String>,
         retryPolicy: RetryPolicy,
-    ): Result<SsoCredentials, TransportError> =
-        throw UnsupportedOperationException("fetchSsoCredentials is not exercised by these tests")
+    ): Result<SsoCredentials, TransportError> {
+        ssoCallCount++
+        lastGrant = grant
+        lastHeaders = headers
+        lastRetryPolicy = retryPolicy
+        return ssoOutcome
+    }
 }
 
 private class FakeIdTokenValidator(
@@ -138,6 +158,7 @@ private fun client(
 ): Pair<DefaultAuthenticationClient, Pair<FakeTokenClient, FakeIdTokenValidator>> {
     val impl = DefaultAuthenticationClient(
         clientId = "client-123",
+        domain = "test.auth0.com",
         tokenClient = tokenClient,
         idTokenValidator = validator,
         networkClient = networkClient,
@@ -152,6 +173,7 @@ private fun restClient(
 ): Pair<DefaultAuthenticationClient, RecordingNetworkClient> {
     val impl = DefaultAuthenticationClient(
         clientId = "client-123",
+        domain = "test.auth0.com",
         tokenClient = FakeTokenClient(Result.Failure(TransportError.NoInternet)),
         idTokenValidator = FakeIdTokenValidator(verdict = null),
         networkClient = net,
@@ -634,6 +656,98 @@ class DefaultAuthenticationClientTest {
         val result = impl.renew(refreshToken = "rt")
 
         assertEquals(Result.Failure(AuthenticationError.Network(TransportError.NoInternet)), result)
+    }
+
+    // --- ssoExchange --------------------------------------------------------
+
+    @Test
+    fun ssoExchange_success_returnsCredentials_andBuildsCorrectGrant() = runTest {
+        val sso = ssoCredentials(sessionTransferToken = "the-stt", refreshToken = "rotated-rt")
+        val fake = FakeTokenClient(Result.Failure(TransportError.NoInternet), ssoOutcome = Result.Success(sso))
+        val (impl, _) = client(outcome = Result.Success(credentials()), tokenClient = fake)
+
+        val result = impl.ssoExchange(refreshToken = "rt")
+
+        assertTrue(result is Result.Success)
+        assertSame(sso, result.data)
+        val params = fake.lastGrant!!.parameters
+        assertEquals("refresh_token", params.str("grant_type"))
+        assertEquals("client-123", params.str("client_id"))
+        assertEquals("rt", params.str("refresh_token"))
+        assertEquals("urn:test.auth0.com:session_transfer", params.str("audience"))
+        assertNull(params["scope"])
+    }
+
+    @Test
+    fun ssoExchange_forwardsOptions() = runTest {
+        val fake = FakeTokenClient(Result.Failure(TransportError.NoInternet))
+        val (impl, _) = client(outcome = Result.Success(credentials()), tokenClient = fake)
+        val retry = RetryPolicy(
+            maxAttempts = 3,
+            backoff = Backoff.Fixed(kotlin.time.Duration.ZERO),
+            retryOn = { true },
+        )
+
+        impl.ssoExchange(
+            refreshToken = "rt",
+            options = RequestOptions(
+                parameters = mapOf("audience" to "should-not-win", "custom" to "v"),
+                headers = mapOf("X-H" to "h"),
+                retryPolicy = retry,
+            ),
+        )
+
+        val params = fake.lastGrant!!.parameters
+        // SDK-set audience wins over caller-supplied extra parameters.
+        assertEquals("urn:test.auth0.com:session_transfer", params.str("audience"))
+        assertEquals("v", params.str("custom"))
+        assertEquals("h", fake.lastHeaders!!["X-H"])
+        assertSame(retry, fake.lastRetryPolicy)
+    }
+
+    @Test
+    fun ssoExchange_blankToken_failsWithoutBuildingGrant() = runTest {
+        val fake = FakeTokenClient(Result.Failure(TransportError.NoInternet))
+        val (impl, _) = client(outcome = Result.Success(credentials()), tokenClient = fake)
+
+        val result = impl.ssoExchange(refreshToken = " ")
+
+        assertTrue(result is Result.Failure && result.error is AuthenticationError.InvalidInput)
+        assertEquals(0, fake.ssoCallCount)
+        assertNull(fake.lastGrant)
+    }
+
+    @Test
+    fun ssoExchange_transportFailure_maps() = runTest {
+        val fake = FakeTokenClient(
+            Result.Failure(TransportError.NoInternet),
+            ssoOutcome = Result.Failure(TransportError.NoInternet),
+        )
+        val (impl, _) = client(outcome = Result.Success(credentials()), tokenClient = fake)
+
+        val result = impl.ssoExchange(refreshToken = "rt")
+
+        assertEquals(Result.Failure(AuthenticationError.Network(TransportError.NoInternet)), result)
+    }
+
+    @Test
+    fun ssoExchange_serverError_mapsToApiError() = runTest {
+        val server = TransportError.Server(
+            403,
+            """{"error":"invalid_grant","error_description":"Bad refresh token"}""",
+        )
+        val fake = FakeTokenClient(
+            Result.Failure(TransportError.NoInternet),
+            ssoOutcome = Result.Failure(server),
+        )
+        val (impl, _) = client(outcome = Result.Success(credentials()), tokenClient = fake)
+
+        val result = impl.ssoExchange(refreshToken = "rt")
+
+        assertEquals(
+            Result.Failure(AuthenticationError.ApiError("invalid_grant", "Bad refresh token", 403)),
+            result,
+        )
     }
 
     // --- loginWithPasskey ---------------------------------------------------
