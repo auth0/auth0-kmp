@@ -1,5 +1,6 @@
 package com.auth0.kmp.credentials
 
+import com.auth0.kmp.core.Auth0Account
 import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.model.Credentials
@@ -23,6 +24,7 @@ private fun JsonObject.str(key: String): String? = this[key]?.jsonPrimitive?.con
 class DefaultCredentialsManagerTest {
 
     private val clientId = "client-1"
+    private val domain = "test.auth0.com"
     private val storeKey = "credentials_client-1"
     private val now = Instant.fromEpochSeconds(1_000_000)
 
@@ -33,7 +35,9 @@ class DefaultCredentialsManagerTest {
         clientId: String = this.clientId,
         storeKey: String = this.storeKey,
         lockProvider: LockProvider = MutexRegistry(),
-    ) = DefaultCredentialsManager(clientId, tokenClient, storage, storeKey, clock, lockProvider)
+    ) = DefaultCredentialsManager(
+        Auth0Account(clientId, domain), tokenClient, storage, storeKey, clock, lockProvider,
+    )
 
     private fun storageWith(credentials: Credentials): FakeStorage =
         FakeStorage(mutableMapOf(storeKey to CredentialsSerializer.encode(credentials)))

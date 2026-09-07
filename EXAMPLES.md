@@ -33,6 +33,7 @@ val auth0 = Auth0(account)
   - [Reset a password](#reset-a-password)
   - [Retrieve user information](#retrieve-user-information)
   - [Renew credentials](#renew-credentials)
+  - [Get SSO credentials](#get-sso-credentials)
   - [Revoke a refresh token](#revoke-a-refresh-token)
   - [Passkeys](#passkeys)
   - [Authentication API errors](#authentication-api-errors)
@@ -44,6 +45,7 @@ val auth0 = Auth0(account)
   - [API credentials](#api-credentials)
   - [Check for stored API credentials](#check-for-stored-api-credentials)
   - [Clear API credentials](#clear-api-credentials)
+  - [Web single sign-on (session transfer)](#web-single-sign-on-session-transfer)
   - [Clear credentials](#clear-credentials)
   - [Multiple credential stores](#multiple-credential-stores)
   - [Custom storage](#custom-storage)
@@ -355,7 +357,7 @@ Exchanges a refresh token for fresh credentials.
 
 ```kotlin
 val result = auth0.authentication.renew(
-    refreshToken = credentials.refreshToken!!,
+    refreshToken = refreshToken,
 )
 ```
 
@@ -365,6 +367,32 @@ granted originally will fail.
 > [!TIP]
 > If you use the [Credentials Manager](#credentials-manager-android--ios), you do
 > not need to call this — `getCredentials()` renews expired credentials for you.
+
+### Get SSO credentials
+
+Exchanges a refresh token for a single-use, short-lived **session-transfer
+token**, so a native session can be continued on the web. Send the returned
+token to your website — as a query parameter or a cookie — when opening it from
+your app; the site then redirects to Auth0's `/authorize` endpoint to establish
+a web session without asking the user to sign in again.
+
+```kotlin
+val result = auth0.authentication.ssoExchange(
+    refreshToken = credentials.refreshToken!!,
+)
+```
+
+The refresh token must have been issued with the `offline_access` scope. On
+success the `SsoCredentials` carries the `sessionTransferToken`, its
+`issuedTokenType`, `expiresAt`, a fresh `idToken`, and — if refresh-token
+rotation is enabled — a rotated `refreshToken` you must persist in place of the
+old one.
+
+> [!TIP]
+> If you use the [Credentials Manager](#credentials-manager-android--ios), call
+> [`getSsoCredentials()`](#web-single-sign-on-session-transfer) instead. It reads
+> the stored refresh token, serializes concurrent calls, and writes back the
+> rotated refresh token and new ID token for you.
 
 ### Revoke a refresh token
 
@@ -573,6 +601,51 @@ credentialsManager.clearApiCredentials(audience = "https://api.example.com")
 > [`clearCredentials()`](#clear-credentials) already removes every cached API
 > token along with the main credentials, so you only need this to drop a single
 > audience.
+
+### Web single sign-on (session transfer)
+
+To sign a user in to your website without asking them to authenticate again,
+exchange the stored refresh token for a single-use, short-lived **session-transfer
+token**. Send that token to your website — as a query parameter or a cookie — when
+opening it from your app. Your website then redirects the user to Auth0's
+`/authorize` endpoint, passing the token along; Auth0 sets the session cookies and
+redirects back, and the user is now signed in on the web too. This works with any
+browser or web view, including standalone browser apps.
+
+```kotlin
+when (val result = credentialsManager.getSsoCredentials()) {
+    is Result.Success -> {
+        val ssoCredentials = result.data
+        openWebsite("https://example.com/login?session_transfer_token=${ssoCredentials.sessionTransferToken}")
+    }
+    is Result.Failure -> { /* result.error is a CredentialsManagerError */ }
+}
+```
+
+The returned `SsoCredentials` carries the `sessionTransferToken`, its
+`issuedTokenType` and `expiresAt`, a fresh `idToken`, and — when
+[Refresh Token Rotation](https://auth0.com/docs/secure/tokens/refresh-tokens/refresh-token-rotation)
+is enabled — a rotated `refreshToken`.
+
+To pass extra `/oauth/token` parameters or headers to the exchange:
+
+```kotlin
+credentialsManager.getSsoCredentials(
+    parameters = mapOf("some_param" to "value"),
+    headers = mapOf("X-Request-Id" to requestId),
+)
+```
+
+> [!NOTE]
+> This needs a stored refresh token, so log in with `offline_access` in your
+> scope. If the exchange returns a rotated refresh token, the manager writes it
+> back — along with the fresh ID token — to the stored credentials for you. The
+> session-transfer token itself is single-use and is never stored.
+
+The exchange fails with `CredentialsManagerError.NoRefreshToken` when no refresh
+token is stored; other failures surface as the same
+[`CredentialsManagerError`](#credentials-manager-errors) cases as the rest of the
+manager.
 
 ### Clear credentials
 

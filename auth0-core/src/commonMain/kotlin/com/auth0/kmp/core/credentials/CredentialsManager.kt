@@ -2,6 +2,7 @@ package com.auth0.kmp.core.credentials
 
 import com.auth0.kmp.core.model.ApiCredentials
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.model.SsoCredentials
 import com.auth0.kmp.core.result.Result
 
 /**
@@ -53,6 +54,19 @@ public interface CredentialsManager : AutoCloseable {
         headers: Map<String, String> = emptyMap(),
         forceRefresh: Boolean = false,
     ): Result<Credentials, CredentialsManagerError>
+
+    /**
+     * Returns a single-use session-transfer token, exchanging the stored refresh token for one, so a
+     * native session can be continued in a web context.
+     *
+     * @param parameters extra `/oauth/token` form parameters for the exchange.
+     * @param headers extra HTTP headers for the exchange request.
+     * @return [Result.Success] with the [SsoCredentials], or a [CredentialsManagerError].
+     */
+    public suspend fun getSsoCredentials(
+        parameters: Map<String, String> = emptyMap(),
+        headers: Map<String, String> = emptyMap(),
+    ): Result<SsoCredentials, CredentialsManagerError>
 
     /**
      * Returns an access token scoped to an [audience] and optional [scope], exchanging the stored refresh

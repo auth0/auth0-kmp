@@ -8,6 +8,7 @@ import com.auth0.kmp.authentication.model.PublicKeyCredentials
 import com.auth0.kmp.authentication.model.SignupProfile
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.model.SsoCredentials
 import com.auth0.kmp.core.model.UserInfo
 import com.auth0.kmp.core.result.Result
 
@@ -120,6 +121,20 @@ public interface AuthenticationClient : AutoCloseable {
         scope: String? = null,
         options: RequestOptions = RequestOptions(),
     ): Result<Credentials, AuthenticationError>
+
+    /**
+     * Exchanges a refresh token for a single-use session-transfer token, so a native
+     * session can be continued in a web context.
+     *
+     * @param refreshToken the refresh token to exchange.
+     * @param options per-call transport options (extra parameters, headers, retry policy).
+     * @return [Result.Success] with the [SsoCredentials], or [Result.Failure] with the
+     *   [AuthenticationError] that occurred.
+     */
+    public suspend fun ssoExchange(
+        refreshToken: String,
+        options: RequestOptions = RequestOptions(),
+    ): Result<SsoCredentials, AuthenticationError>
 
     /**
      * Requests a challenge to sign in an existing user with a passkey.

@@ -87,7 +87,7 @@ public fun credentialsManager(
 ): CredentialsManager {
     val collaborators = DPoPRegistry.Default.collaboratorsFor(account)
     return DefaultCredentialsManager(
-        clientId = account.clientId,
+        auth0Account = account,
         tokenClient = tokenClient(networkClient, Clock.System),
         storage = storage,
         storeKey = storeKey,

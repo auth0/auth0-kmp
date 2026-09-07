@@ -7,6 +7,7 @@ import com.auth0.kmp.core.dpop.DPoPKeyStore
 import com.auth0.kmp.core.dpop.DPoPProofGenerator
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.model.SsoCredentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.token.TokenClient
 import com.auth0.kmp.core.token.TokenGrant
@@ -95,6 +96,13 @@ private class FakeTokenClient(
         lastGrant = grant
         return outcome
     }
+
+    override suspend fun fetchSsoCredentials(
+        grant: TokenGrant,
+        headers: Map<String, String>,
+        retryPolicy: RetryPolicy,
+    ): Result<SsoCredentials, TransportError> =
+        throw UnsupportedOperationException("fetchSsoCredentials is not exercised by these tests")
 }
 
 

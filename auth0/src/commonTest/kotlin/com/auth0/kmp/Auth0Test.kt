@@ -14,6 +14,7 @@ import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.model.ApiCredentials
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.model.SsoCredentials
 import com.auth0.kmp.core.model.UserInfo
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.credentials.Storage
@@ -96,6 +97,11 @@ private class FakeAuthenticationClient : AuthenticationClient {
         options: RequestOptions,
     ): Result<Credentials, AuthenticationError> = error("not used")
 
+    override suspend fun ssoExchange(
+        refreshToken: String,
+        options: RequestOptions,
+    ): Result<SsoCredentials, AuthenticationError> = error("not used")
+
     override suspend fun passkeyLoginChallenge(
         realm: String?,
         organization: String?,
@@ -138,6 +144,11 @@ private class FakeCredentialsManager : CredentialsManager {
         headers: Map<String, String>,
         forceRefresh: Boolean,
     ): Result<Credentials, CredentialsManagerError> = error("not used")
+
+    override suspend fun getSsoCredentials(
+        parameters: Map<String, String>,
+        headers: Map<String, String>,
+    ): Result<SsoCredentials, CredentialsManagerError> = error("not used")
 
     override suspend fun getApiCredentials(
         audience: String,

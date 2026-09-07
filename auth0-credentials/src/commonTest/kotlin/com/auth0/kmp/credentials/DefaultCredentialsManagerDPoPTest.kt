@@ -1,5 +1,6 @@
 package com.auth0.kmp.credentials
 
+import com.auth0.kmp.core.Auth0Account
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.dpop.DPoPJwk
@@ -22,6 +23,7 @@ import kotlin.time.Instant
 class DefaultCredentialsManagerDPoPTest {
 
     private val clientId = "client-1"
+    private val domain = "test.auth0.com"
     private val storeKey = "credentials_client-1"
     private val now = Instant.fromEpochSeconds(1_000_000)
 
@@ -62,7 +64,7 @@ class DefaultCredentialsManagerDPoPTest {
         useDPoP: Boolean = false,
         clock: Clock = MutableClock(now),
     ) = DefaultCredentialsManager(
-        clientId = clientId,
+        auth0Account = Auth0Account(clientId, domain),
         tokenClient = tokenClient,
         storage = storage,
         storeKey = storeKey,
@@ -220,6 +222,23 @@ class DefaultCredentialsManagerDPoPTest {
         assertNotNull(storage.retrieve(storeKey))
         assertEquals(jkt, storage.storedThumbprint())
         assertEquals(0, tokenClient.callCount)
+    }
+
+    // --- validateDPoPState (SSO path) ---
+
+    @Test
+    fun getSso_fails_and_clears_when_key_missing_and_skips_exchange() = runTest {
+        val storage = storageWith(blob(expiredBearer(), thumbprint = jkt))
+        val tokenClient = FakeTokenClient()
+
+        val result = manager(
+            storage, tokenClient, keyStore = FakeDPoPKeyStore(keyPresent = false), useDPoP = true,
+        ).getSsoCredentials()
+
+        assertIs<Result.Failure<CredentialsManagerError>>(result)
+        assertIs<CredentialsManagerError.DPoPKeyMissing>(result.error)
+        assertNull(storage.retrieve(storeKey))
+        assertEquals(0, tokenClient.ssoCallCount)
     }
 
     // --- dpopThumbprintForSave (via saveCredentials) ---

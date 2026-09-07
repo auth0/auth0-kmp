@@ -1,5 +1,6 @@
 package com.auth0.kmp.credentials
 
+import com.auth0.kmp.core.Auth0Account
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.credentials.CredentialsManager
 import com.auth0.kmp.core.credentials.CredentialsManagerError
@@ -7,8 +8,10 @@ import com.auth0.kmp.core.dpop.DPoPProofGenerator
 import com.auth0.kmp.core.logging.Auth0Log
 import com.auth0.kmp.core.model.ApiCredentials
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.model.SsoCredentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.result.flatMap
+import com.auth0.kmp.core.result.getOrElse
 import com.auth0.kmp.core.result.map
 import com.auth0.kmp.core.token.RefreshTokenGrant
 import com.auth0.kmp.core.token.TokenClient
@@ -19,7 +22,7 @@ import kotlin.time.Instant
 
 @OptIn(InternalAuth0Api::class)
 internal class DefaultCredentialsManager(
-    private val clientId: String,
+    private val auth0Account: Auth0Account,
     private val tokenClient: TokenClient,
     private val storage: Storage,
     private val storeKey: String,
@@ -32,10 +35,7 @@ internal class DefaultCredentialsManager(
     override suspend fun saveCredentials(
         credentials: Credentials,
     ): Result<Unit, CredentialsManagerError> {
-        val thumbprint = when (val result = dpopThumbprintForSave(credentials)) {
-            is Result.Success -> result.data
-            is Result.Failure -> return result
-        }
+        val thumbprint = dpopThumbprintForSave(credentials).getOrElse { return it }
         return storageCall {
             storage.store(storeKey, CredentialsSerializer.encode(credentials, thumbprint))
         }
@@ -65,10 +65,7 @@ internal class DefaultCredentialsManager(
         headers: Map<String, String>,
         forceRefresh: Boolean,
     ): Result<Credentials, CredentialsManagerError> = withAccountLock {
-        val stored = when (val read = loadStoredCredentials()) {
-            is Result.Success -> read.data
-            is Result.Failure -> return@withAccountLock read
-        }
+        val stored = loadStoredCredentials().getOrElse { return@withAccountLock it }
         val credentials = stored.credentials
 
         val scopeChanged = hasScopeChanged(credentials.scope, scope)
@@ -85,12 +82,8 @@ internal class DefaultCredentialsManager(
                 "willExpire=${willExpire(credentials.expiresAt, minTtl)}, scopeChanged=$scopeChanged)",
         )
 
-        val exchange = when (
-            val result = exchangeRefreshToken(stored, scope, audience = null, parameters, headers)
-        ) {
-            is Result.Success -> result.data
-            is Result.Failure -> return@withAccountLock result
-        }
+        val exchange = exchangeRefreshToken(stored, scope, audience = null, parameters, headers)
+            .getOrElse { return@withAccountLock it }
 
         val merged = exchange.credentials.copy(
             refreshToken = exchange.credentials.refreshToken?.takeIf { it.isNotBlank() }
@@ -110,6 +103,43 @@ internal class DefaultCredentialsManager(
         Result.Success(merged)
     }
 
+    override suspend fun getSsoCredentials(
+        parameters: Map<String, String>,
+        headers: Map<String, String>,
+    ): Result<SsoCredentials, CredentialsManagerError> = withAccountLock {
+        val stored = loadStoredCredentials().getOrElse { return@withAccountLock it }
+
+        val refreshToken = stored.credentials.refreshToken
+        if (refreshToken.isNullOrBlank()) {
+            Auth0Log.e(TAG, "A session-transfer exchange is required but no refresh token is available")
+            return@withAccountLock Result.Failure(CredentialsManagerError.NoRefreshToken)
+        }
+
+        val thumbprint = validateDPoPState(stored.credentials.tokenType, stored.dpopThumbprint)
+            .getOrElse { return@withAccountLock it }
+
+        val grant = RefreshTokenGrant(
+            refreshToken,
+            auth0Account.clientId,
+            audience = "urn:${auth0Account.domain}:session_transfer",
+            extraParameters = parameters,
+        )
+        val ssoCredentials = tokenClient.fetchSsoCredentials(grant, headers)
+            .getOrElse { return@withAccountLock Result.Failure(it.error.toCredentialsManagerError()) }
+
+        val updatedMain = stored.credentials.copy(
+            idToken = ssoCredentials.idToken,
+            refreshToken = ssoCredentials.refreshToken?.takeIf { it.isNotBlank() }
+                ?: stored.credentials.refreshToken,
+        )
+        val write = storageCall {
+            storage.store(storeKey, CredentialsSerializer.encode(updatedMain, thumbprint))
+        }
+        if (write is Result.Failure) return@withAccountLock write
+
+        Result.Success(ssoCredentials)
+    }
+
     override suspend fun getApiCredentials(
         audience: String,
         scope: String?,
@@ -120,10 +150,7 @@ internal class DefaultCredentialsManager(
     ): Result<ApiCredentials, CredentialsManagerError> = withAccountLock {
         val entryKey = apiCredentialsKey(audience, scope)
 
-        val cachedBlob = when (val read = readApiCredentials()) {
-            is Result.Success -> read.data
-            is Result.Failure -> return@withAccountLock read
-        }
+        val cachedBlob = readApiCredentials().getOrElse { return@withAccountLock it }
 
         val cached = cachedBlob[entryKey]
         if (!forceRefresh && cached != null &&
@@ -132,17 +159,10 @@ internal class DefaultCredentialsManager(
             return@withAccountLock Result.Success(cached)
         }
 
-        val stored = when (val read = loadStoredCredentials()) {
-            is Result.Success -> read.data
-            is Result.Failure -> return@withAccountLock read
-        }
+        val stored = loadStoredCredentials().getOrElse { return@withAccountLock it }
 
-        val exchange = when (
-            val result = exchangeRefreshToken(stored, scope, audience, parameters, headers)
-        ) {
-            is Result.Success -> result.data
-            is Result.Failure -> return@withAccountLock result
-        }
+        val exchange = exchangeRefreshToken(stored, scope, audience, parameters, headers)
+            .getOrElse { return@withAccountLock it }
         val exchanged = exchange.credentials
 
         val apiCredentials = ApiCredentials(
@@ -175,10 +195,7 @@ internal class DefaultCredentialsManager(
         audience: String,
         scope: String?,
     ): Result<Unit, CredentialsManagerError> = withAccountLock {
-        val blob = when (val read = readApiCredentials()) {
-            is Result.Success -> read.data
-            is Result.Failure -> return@withAccountLock read
-        }
+        val blob = readApiCredentials().getOrElse { return@withAccountLock it }
         val entryKey = apiCredentialsKey(audience, scope)
         if (entryKey !in blob) return@withAccountLock Result.Success(Unit)
 
@@ -241,18 +258,13 @@ internal class DefaultCredentialsManager(
             return Result.Failure(CredentialsManagerError.NoRefreshToken)
         }
 
-        val thumbprint = when (
-            val result = validateDPoPState(credentials.tokenType, stored.dpopThumbprint)
-        ) {
-            is Result.Success -> result.data
-            is Result.Failure -> return result
-        }
+        val thumbprint = validateDPoPState(credentials.tokenType, stored.dpopThumbprint)
+            .getOrElse { return it }
 
-        val grant = RefreshTokenGrant(refreshToken, clientId, scope, audience, extraParameters = parameters)
-        return when (val result = tokenClient.fetchToken(grant, headers)) {
-            is Result.Failure -> Result.Failure(result.error.toCredentialsManagerError())
-            is Result.Success -> Result.Success(TokenExchange(result.data, thumbprint))
-        }
+        val grant = RefreshTokenGrant(refreshToken, auth0Account.clientId, scope, audience, extraParameters = parameters)
+        val data = tokenClient.fetchToken(grant, headers)
+            .getOrElse { return Result.Failure(it.error.toCredentialsManagerError()) }
+        return Result.Success(TokenExchange(data, thumbprint))
     }
 
     /**
@@ -336,7 +348,7 @@ internal class DefaultCredentialsManager(
     }
 
     private suspend fun <T> withAccountLock(block: suspend () -> T): T =
-        lockProvider.lockFor(clientId, storeKey).withLock { block() }
+        lockProvider.lockFor(auth0Account.clientId, storeKey).withLock { block() }
 
     private suspend fun <T> storageCall(
         block: suspend () -> T,

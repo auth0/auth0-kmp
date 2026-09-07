@@ -29,6 +29,7 @@ public fun authenticationClient(
     val clock = Clock.System
     return DefaultAuthenticationClient(
         clientId = account.clientId,
+        domain = account.domain,
         tokenClient = tokenClient(networkClient, clock),
         idTokenValidator = IdTokenClaimsValidator(
             issuer = normalizedBaseUrl(account),

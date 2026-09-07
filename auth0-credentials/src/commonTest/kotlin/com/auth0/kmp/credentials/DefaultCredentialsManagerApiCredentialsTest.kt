@@ -1,5 +1,6 @@
 package com.auth0.kmp.credentials
 
+import com.auth0.kmp.core.Auth0Account
 import com.auth0.kmp.core.credentials.CredentialsManagerError
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.model.ApiCredentials
@@ -21,6 +22,7 @@ private fun JsonObject.str(key: String): String? = this[key]?.jsonPrimitive?.con
 class DefaultCredentialsManagerApiCredentialsTest {
 
     private val clientId = "client-1"
+    private val domain = "test.auth0.com"
     private val storeKey = "credentials_client-1"
     private val apiStoreKey = "credentials_client-1::api"
     private val now = Instant.fromEpochSeconds(1_000_000)
@@ -29,7 +31,9 @@ class DefaultCredentialsManagerApiCredentialsTest {
         storage: Storage,
         tokenClient: FakeTokenClient = FakeTokenClient(Result.Success(credentials())),
         clock: Clock = MutableClock(now),
-    ) = DefaultCredentialsManager(clientId, tokenClient, storage, storeKey, clock, MutexRegistry())
+    ) = DefaultCredentialsManager(
+        Auth0Account(clientId, domain), tokenClient, storage, storeKey, clock, MutexRegistry(),
+    )
 
     private fun apiCred(
         accessToken: String = "api-at",

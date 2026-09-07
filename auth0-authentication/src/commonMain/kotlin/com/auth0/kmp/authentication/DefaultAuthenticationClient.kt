@@ -1,6 +1,7 @@
 package com.auth0.kmp.authentication
 
 import com.auth0.kmp.authentication.error.AuthenticationError
+import com.auth0.kmp.authentication.error.toAuthenticationError
 import com.auth0.kmp.authentication.model.DatabaseUser
 import com.auth0.kmp.authentication.model.PasskeyLoginChallenge
 import com.auth0.kmp.authentication.model.PasskeyRegistrationChallenge
@@ -19,8 +20,10 @@ import com.auth0.kmp.authentication.response.toUserInfo
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.model.Credentials
+import com.auth0.kmp.core.model.SsoCredentials
 import com.auth0.kmp.core.model.UserInfo
 import com.auth0.kmp.core.result.Result
+import com.auth0.kmp.core.result.fold
 import com.auth0.kmp.core.token.RefreshTokenGrant
 import com.auth0.kmp.core.token.TokenClient
 import com.auth0.kmp.core.validation.IdTokenValidator
@@ -36,6 +39,7 @@ import kotlinx.serialization.json.put
 @OptIn(InternalAuth0Api::class)
 internal class DefaultAuthenticationClient(
     private val clientId: String,
+    private val domain: String,
     private val tokenClient: TokenClient,
     private val idTokenValidator: IdTokenValidator,
     private val networkClient: NetworkClient,
@@ -184,6 +188,28 @@ internal class DefaultAuthenticationClient(
 
         return tokenClient.fetchToken(grant, options.headers, options.retryPolicy)
             .foldToCredentials(idTokenValidator, validateIdToken = false)
+    }
+
+    override suspend fun ssoExchange(
+        refreshToken: String,
+        options: RequestOptions,
+    ): Result<SsoCredentials, AuthenticationError> {
+        if (refreshToken.isBlank()) {
+            return Result.Failure(AuthenticationError.InvalidInput("refreshToken must not be blank"))
+        }
+
+        val grant = RefreshTokenGrant(
+            refreshToken = refreshToken,
+            clientId = clientId,
+            audience = "urn:$domain:session_transfer",
+            extraParameters = options.parameters,
+        )
+
+        return tokenClient.fetchSsoCredentials(grant, options.headers, options.retryPolicy)
+            .fold(
+                { Result.Success(it) },
+                { Result.Failure(it.toAuthenticationError()) },
+            )
     }
 
     override suspend fun passkeyLoginChallenge(
