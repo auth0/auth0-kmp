@@ -37,8 +37,8 @@ internal class DefaultTokenClient(
         val request = createTokenRequest(grant.parameters, headers)
 
         return networkClient.request(request, retryPolicy) {
-            json.decodeFromString<TokenResponse>(it)
-        }.map { it.toSsoCredentials(clock) }
+            json.decodeFromString<TokenResponse>(it).toSsoCredentials(clock)
+        }
     }
 
     private fun createTokenRequest(

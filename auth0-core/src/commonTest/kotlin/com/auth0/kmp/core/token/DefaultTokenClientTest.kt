@@ -1,5 +1,6 @@
 package com.auth0.kmp.core.token
 
+import com.auth0.kmp.core.Auth0Account
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.networking.NetworkClient
@@ -7,6 +8,12 @@ import com.auth0.kmp.networking.request.HttpMethod
 import com.auth0.kmp.networking.request.NetworkRequest
 import com.auth0.kmp.networking.retry.Backoff
 import com.auth0.kmp.networking.retry.RetryPolicy
+import com.auth0.kmp.networking.transport.DefaultNetworkClient
+import com.auth0.kmp.networking.transport.EndpointResolver
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -21,6 +28,12 @@ import kotlin.time.Instant
 
 private fun tokenJson(): String =
     """{"access_token":"at","id_token":"it","token_type":"Bearer","expires_in":3600,"refresh_token":"rt","scope":"openid"}"""
+
+private fun ssoJson(): String =
+    """{"access_token":"stt","issued_token_type":"urn:x:session_transfer","token_type":"Bearer","expires_in":3600,"id_token":"idt","refresh_token":"rt"}"""
+
+private fun ssoJsonMissingIdToken(): String =
+    """{"access_token":"stt","issued_token_type":"urn:x:session_transfer","token_type":"Bearer","expires_in":3600,"refresh_token":"rt"}"""
 
 private class FixedClock(private val at: Instant) : Clock {
     override fun now(): Instant = at
@@ -50,6 +63,8 @@ private class StubGrant(override val parameters: JsonObject) : TokenGrant
 
 @OptIn(kotlin.time.ExperimentalTime::class)
 class DefaultTokenClientTest {
+
+    private val account = Auth0Account(clientId = "client", domain = "example.auth0.com")
 
     @Test
     fun posts_grant_parameters_as_json_body_to_oauth_token() = runTest {
@@ -112,5 +127,35 @@ class DefaultTokenClientTest {
         client.fetchToken(StubGrant(buildJsonObject { }), retryPolicy = policy)
 
         assertSame(policy, net.lastRetryPolicy)
+    }
+
+    @Test
+    fun fetchSsoCredentials_success_mapsBodyToSsoCredentials() = runTest {
+        val http = HttpClient(MockEngine { respond(content = ssoJson(), status = HttpStatusCode.OK) })
+        val client = DefaultTokenClient(
+            DefaultNetworkClient(http, EndpointResolver(account)),
+            FixedClock(Instant.fromEpochSeconds(1_000)),
+        )
+
+        val result = client.fetchSsoCredentials(StubGrant(buildJsonObject { }))
+
+        result as Result.Success
+        assertEquals("stt", result.data.sessionTransferToken)
+        assertEquals("idt", result.data.idToken)
+        assertEquals(Instant.fromEpochSeconds(1_000 + 3600), result.data.expiresAt)
+    }
+
+    @Test
+    fun fetchSsoCredentials_missingIdToken_mapsToSerializationFailure() = runTest {
+        val http = HttpClient(MockEngine { respond(content = ssoJsonMissingIdToken(), status = HttpStatusCode.OK) })
+        val client = DefaultTokenClient(
+            DefaultNetworkClient(http, EndpointResolver(account)),
+            FixedClock(Instant.fromEpochSeconds(0)),
+        )
+
+        val result = client.fetchSsoCredentials(StubGrant(buildJsonObject { }))
+
+        result as Result.Failure<TransportError>
+        assertTrue(result.error is TransportError.Serialization)
     }
 }

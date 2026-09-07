@@ -698,7 +698,6 @@ class DefaultAuthenticationClientTest {
         )
 
         val params = fake.lastGrant!!.parameters
-        // SDK-set audience wins over caller-supplied extra parameters.
         assertEquals("urn:test.auth0.com:session_transfer", params.str("audience"))
         assertEquals("v", params.str("custom"))
         assertEquals("h", fake.lastHeaders!!["X-H"])
