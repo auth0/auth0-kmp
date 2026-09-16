@@ -7,10 +7,7 @@ import com.auth0.kmp.myaccount.model.PasskeyAuthenticationMethod
 import com.auth0.kmp.myaccount.model.PasskeyEnrollmentChallenge
 import com.auth0.kmp.myaccount.model.PublicKeyCredentials
 
-/**
- * Performs My Account API operations for the user the access token was issued
- * for, against an Auth0 tenant.
- */
+
 public interface MyAccountClient : AutoCloseable {
 
     /**

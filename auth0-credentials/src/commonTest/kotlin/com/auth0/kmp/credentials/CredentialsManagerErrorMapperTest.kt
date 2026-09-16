@@ -27,7 +27,7 @@ class CredentialsManagerErrorMapperTest {
     @Test
     fun server_with_auth0_error_body_maps_to_api_error() {
         val body = """{"error":"invalid_grant","error_description":"refresh token is invalid"}"""
-        val error = TransportError.Server(status = 403, body = body).toCredentialsManagerError()
+        val error = TransportError.Server(status = 403, headers = emptyMap(), body = body).toCredentialsManagerError()
 
         val apiError = assertIs<CredentialsManagerError.ApiError>(error)
         assertEquals("invalid_grant", apiError.code)
@@ -37,7 +37,7 @@ class CredentialsManagerErrorMapperTest {
 
     @Test
     fun server_with_unparseable_body_maps_to_unknown() {
-        val transport = TransportError.Server(status = 500, body = "not-json")
+        val transport = TransportError.Server(status = 500, headers = emptyMap(), body = "not-json")
         val error = transport.toCredentialsManagerError()
 
         val unknown = assertIs<CredentialsManagerError.Unknown>(error)

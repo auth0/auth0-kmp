@@ -12,13 +12,18 @@ public sealed interface TransportError : Auth0Error {
     public data object Timeout : TransportError
 
     /**
-     * A non-2xx HTTP response. The body is always retained so callers can parse
-     * the server's error payload.
+     * A non-2xx HTTP response. The headers and body are always retained so
+     * callers can inspect response metadata and parse the server's error payload.
      *
      * @param status the HTTP status code.
+     * @param headers the response headers, each name mapped to its values.
      * @param body the raw response body, if any.
      */
-    public data class Server(val status: Int, val body: String?) : TransportError
+    public data class Server(
+        val status: Int,
+        val headers: Map<String, List<String>>,
+        val body: String?,
+    ) : TransportError
 
     /**
      * A response was received but could not be decoded into the expected type.

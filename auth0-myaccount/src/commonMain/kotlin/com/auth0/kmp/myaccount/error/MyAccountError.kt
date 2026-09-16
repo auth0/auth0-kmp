@@ -4,12 +4,12 @@ import com.auth0.kmp.core.error.Auth0Error
 import com.auth0.kmp.core.error.TransportError
 
 /**
- * Failures surfaced by a My Account API operation.
+ * Failures surfaced by My Account API operation.
  */
 public sealed interface MyAccountError : Auth0Error {
 
     /**
-     * Auth0 received the request and rejected it with a Problem Details payload.
+     * Auth0 received the request and rejected it with an error payload.
      *
      * @param type a URI identifying the problem type, or `null` when absent.
      * @param title a short, human-readable summary of the problem.
@@ -18,9 +18,9 @@ public sealed interface MyAccountError : Auth0Error {
      * @param validationErrors the per-field validation failures, empty when none.
      */
     public data class ApiError(
-        val type: String?,
+        val type: String,
         val title: String,
-        val detail: String?,
+        val detail: String,
         val status: Int,
         val validationErrors: List<ValidationError> = emptyList(),
     ) : MyAccountError

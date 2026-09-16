@@ -18,6 +18,11 @@ import com.auth0.kmp.core.model.SsoCredentials
 import com.auth0.kmp.core.model.UserInfo
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.credentials.Storage
+import com.auth0.kmp.myaccount.MyAccountClient
+import com.auth0.kmp.myaccount.error.MyAccountError
+import com.auth0.kmp.myaccount.model.PasskeyAuthenticationMethod
+import com.auth0.kmp.myaccount.model.PasskeyEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.PublicKeyCredentials as MyAccountPublicKeyCredentials
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.request.NetworkRequest
 import com.auth0.kmp.networking.retry.RetryPolicy
@@ -38,6 +43,12 @@ private class FakeNetworkClient : NetworkClient {
         request: NetworkRequest,
         retryPolicy: RetryPolicy,
         deserialize: (String) -> T,
+    ): Result<T, TransportError> = error("not used")
+
+    override suspend fun <T> request(
+        request: NetworkRequest,
+        retryPolicy: RetryPolicy,
+        deserialize: (body: String, headers: Map<String, List<String>>) -> T,
     ): Result<T, TransportError> = error("not used")
 
     override fun close() {
@@ -171,6 +182,20 @@ private class FakeCredentialsManager : CredentialsManager {
     ): Boolean = error("not used")
 }
 
+private class FakeMyAccountClient : MyAccountClient {
+    override suspend fun passkeyEnrollmentChallenge(
+        userIdentityId: String?,
+        connection: String?,
+        options: RequestOptions,
+    ): Result<PasskeyEnrollmentChallenge, MyAccountError> = error("not used")
+
+    override suspend fun verifyPasskeyEnrollment(
+        credential: MyAccountPublicKeyCredentials,
+        challenge: PasskeyEnrollmentChallenge,
+        options: RequestOptions,
+    ): Result<PasskeyAuthenticationMethod, MyAccountError> = error("not used")
+}
+
 /** Records which network client each builder saw and how many times it ran. */
 @OptIn(InternalAuth0Api::class)
 private class Builders {
@@ -180,15 +205,21 @@ private class Builders {
         private set
     var credentialsCount = 0
         private set
+    var myAccountCount = 0
+        private set
     var webAuthNetwork: NetworkClient? = null
         private set
     var authNetwork: NetworkClient? = null
         private set
     var credentialsNetwork: NetworkClient? = null
         private set
+    var myAccountNetwork: NetworkClient? = null
+        private set
     var lastStoreKey: String? = null
         private set
     var lastStorage: Storage? = null
+        private set
+    var lastAccessToken: String? = null
         private set
 
     val webAuth: (NetworkClient) -> WebAuthClient = { network ->
@@ -209,6 +240,12 @@ private class Builders {
             lastStorage = storage
             FakeCredentialsManager()
         }
+    val myAccount: (NetworkClient, String) -> MyAccountClient = { network, token ->
+        myAccountCount++
+        myAccountNetwork = network
+        lastAccessToken = token
+        FakeMyAccountClient()
+    }
 }
 
 @OptIn(InternalAuth0Api::class)
@@ -222,6 +259,7 @@ private fun auth(
     buildWebAuth = builders.webAuth,
     buildAuthentication = builders.authentication,
     buildCredentials = builders.credentials,
+    buildMyAccount = builders.myAccount,
 )
 
 @OptIn(InternalAuth0Api::class)
@@ -235,12 +273,14 @@ class Auth0Test {
         assertEquals(0, builders.webAuthCount)
         assertEquals(0, builders.authCount)
         assertEquals(0, builders.credentialsCount)
+        assertEquals(0, builders.myAccountCount)
 
         sdk.webAuth
 
         assertEquals(1, builders.webAuthCount)
         assertEquals(0, builders.authCount)
         assertEquals(0, builders.credentialsCount)
+        assertEquals(0, builders.myAccountCount)
     }
 
     @Test
@@ -270,10 +310,12 @@ class Auth0Test {
         sdk.webAuth
         sdk.authentication
         sdk.credentials()
+        sdk.myAccount("token")
 
         assertSame(network, builders.webAuthNetwork)
         assertSame(network, builders.authNetwork)
         assertSame(network, builders.credentialsNetwork)
+        assertSame(network, builders.myAccountNetwork)
     }
 
     @Test
@@ -299,6 +341,18 @@ class Auth0Test {
     }
 
     @Test
+    fun myAccount_buildsFreshEachCall_passingAccessToken() {
+        val builders = Builders()
+        val sdk = auth(builders = builders)
+
+        sdk.myAccount("token-a")
+        sdk.myAccount("token-b")
+
+        assertEquals(2, builders.myAccountCount)
+        assertEquals("token-b", builders.lastAccessToken)
+    }
+
+    @Test
     fun close_closesSharedTransportOnce() {
         val network = FakeNetworkClient()
         val sdk = auth(network = network)
@@ -319,6 +373,7 @@ class Auth0Test {
         assertEquals(0, builders.webAuthCount)
         assertEquals(0, builders.authCount)
         assertEquals(0, builders.credentialsCount)
+        assertEquals(0, builders.myAccountCount)
         assertEquals(1, network.closeCount)
     }
 }

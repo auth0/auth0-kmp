@@ -226,7 +226,7 @@ class DPoPPluginTest {
 
         assertEquals(
             Result.Failure(
-                TransportError.Server(400, """{"error":"invalid_grant","error_description":"bad"}"""),
+                TransportError.Server(400, emptyMap(), """{"error":"invalid_grant","error_description":"bad"}"""),
             ),
             result,
         )

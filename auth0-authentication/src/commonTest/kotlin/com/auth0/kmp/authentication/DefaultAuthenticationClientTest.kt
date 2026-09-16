@@ -130,13 +130,20 @@ private class RecordingNetworkClient(
         request: NetworkRequest,
         retryPolicy: RetryPolicy,
         deserialize: (String) -> T,
+    ): Result<T, TransportError> =
+        request(request, retryPolicy) { body, _ -> deserialize(body) }
+
+    override suspend fun <T> request(
+        request: NetworkRequest,
+        retryPolicy: RetryPolicy,
+        deserialize: (body: String, headers: Map<String, List<String>>) -> T,
     ): Result<T, TransportError> {
         callCount++
         lastRequest = request
         lastRetryPolicy = retryPolicy
         return when (outcome) {
             is Result.Success -> try {
-                Result.Success(deserialize(outcome.data))
+                Result.Success(deserialize(outcome.data, emptyMap()))
             } catch (e: SerializationException) {
                 Result.Failure(TransportError.Serialization(e.message ?: "Failed to deserialize response"))
             } catch (e: Throwable) {
@@ -283,6 +290,7 @@ class DefaultAuthenticationClientTest {
     fun serverError_mapsToApiError() = runTest {
         val server = TransportError.Server(
             403,
+            emptyMap(),
             """{"error":"invalid_grant","error_description":"Wrong creds"}""",
         )
         val (impl, _) = client(Result.Failure(server))
@@ -441,7 +449,7 @@ class DefaultAuthenticationClientTest {
     @Test
     fun createUser_serverError_mapsToApiError() = runTest {
         val (impl, _) = restClient(
-            Result.Failure(TransportError.Server(400, """{"error":"user_exists","error_description":"exists"}""")),
+            Result.Failure(TransportError.Server(400, emptyMap(), """{"error":"user_exists","error_description":"exists"}""")),
         )
 
         val result = impl.createUser(profile = SignupProfile(email = "a@b.com"), password = "pw", connection = "db")
@@ -733,6 +741,7 @@ class DefaultAuthenticationClientTest {
     fun ssoExchange_serverError_mapsToApiError() = runTest {
         val server = TransportError.Server(
             403,
+            emptyMap(),
             """{"error":"invalid_grant","error_description":"Bad refresh token"}""",
         )
         val fake = FakeTokenClient(

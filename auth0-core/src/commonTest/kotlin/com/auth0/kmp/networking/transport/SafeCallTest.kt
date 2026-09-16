@@ -13,6 +13,7 @@ import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
+import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
 import kotlin.coroutines.cancellation.CancellationException
@@ -65,7 +66,7 @@ class SafeCallTest {
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(TransportError.Server(401, "nope")), result)
+        assertEquals(Result.Failure(TransportError.Server(401, emptyMap(), "nope")), result)
     }
 
     @Test
@@ -74,7 +75,7 @@ class SafeCallTest {
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(TransportError.Server(403, "nope")), result)
+        assertEquals(Result.Failure(TransportError.Server(403, emptyMap(), "nope")), result)
     }
 
     @Test
@@ -83,7 +84,7 @@ class SafeCallTest {
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(TransportError.Server(400, "bad input")), result)
+        assertEquals(Result.Failure(TransportError.Server(400, emptyMap(), "bad input")), result)
     }
 
     @Test
@@ -92,7 +93,25 @@ class SafeCallTest {
 
         val result = safeCall(client, url, request()) { it }
 
-        assertEquals(Result.Failure(TransportError.Server(500, "boom")), result)
+        assertEquals(Result.Failure(TransportError.Server(500, emptyMap(), "boom")), result)
+    }
+
+    @Test
+    fun capturesResponseHeaders_onError() = runTest {
+        val client = HttpClient(
+            MockEngine {
+                respond(
+                    content = "nope",
+                    status = HttpStatusCode.Unauthorized,
+                    headers = headersOf("WWW-Authenticate", """Bearer realm="api""""),
+                )
+            },
+        )
+
+        val result = safeCall(client, url, request()) { it }
+
+        val error = (result as Result.Failure).error as TransportError.Server
+        assertEquals(listOf("""Bearer realm="api""""), error.headers["WWW-Authenticate"])
     }
 
     @Test

@@ -36,6 +36,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(projects.auth0Core)
+            implementation(libs.ktor.http)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
         }

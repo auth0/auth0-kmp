@@ -29,6 +29,25 @@ public interface NetworkClient : AutoCloseable {
     ): Result<T, TransportError>
 
     /**
+     * Sends [request] and returns its outcome, giving the deserializer access to
+     * the response headers in addition to the body.
+     *
+     * Use this when a successful response carries information outside the body.
+     *
+     * @param request the transport-level description of the request to send.
+     * @param retryPolicy how the request is retried on failure.
+     * @param deserialize converts a successful response into [T] from its body and
+     *   headers. Invoked only for a successful response.
+     * @return [Result.Success] with the deserialized body, or [Result.Failure]
+     *   with the mapped [TransportError].
+     */
+    public suspend fun <T> request(
+        request: NetworkRequest,
+        retryPolicy: RetryPolicy = RetryPolicy.None,
+        deserialize: (body: String, headers: Map<String, List<String>>) -> T,
+    ): Result<T, TransportError>
+
+    /**
      * Releases the underlying HTTP resources (connection pool, threads, and the
      * client's coroutine scope). After calling this, the client must not be
      * reused. A long-lived, per-account client typically never needs this.

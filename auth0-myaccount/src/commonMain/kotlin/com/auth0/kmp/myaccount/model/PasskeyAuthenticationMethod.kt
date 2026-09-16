@@ -43,7 +43,7 @@ public data class PasskeyCredential(
     val keyId: String,
     val publicKey: String,
     val userHandle: String,
-    val deviceType: PasskeyDeviceType,
+    val deviceType: CredentialDeviceType,
     val isBackedUp: Boolean,
     val transports: List<String>? = null,
 )
@@ -51,7 +51,7 @@ public data class PasskeyCredential(
 /**
  * Kind of device the passkey is stored on as defined by backup eligibility.
  */
-public enum class PasskeyDeviceType {
+public enum class CredentialDeviceType {
     /** Passkey that cannot be backed up and synced to another device. */
     SINGLE_DEVICE,
 

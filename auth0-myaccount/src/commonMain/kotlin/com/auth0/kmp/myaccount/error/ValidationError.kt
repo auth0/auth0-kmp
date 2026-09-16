@@ -9,8 +9,8 @@ package com.auth0.kmp.myaccount.error
  * @param field the name of the offending field.
  */
 public data class ValidationError(
-    val detail: String?,
-    val pointer: String?,
-    val source: String?,
-    val field: String?,
+    val detail: String,
+    val pointer: String? = null,
+    val source: String? = null,
+    val field: String? = null,
 )

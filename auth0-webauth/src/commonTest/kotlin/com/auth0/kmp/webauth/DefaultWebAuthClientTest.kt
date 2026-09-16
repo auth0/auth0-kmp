@@ -291,7 +291,7 @@ class DefaultWebAuthClientTest {
 
     @Test
     fun codeExchangeServerError_mapsToApiError() = runTest {
-        val server = TransportError.Server(403, """{"error":"invalid_grant","error_description":"bad"}""")
+        val server = TransportError.Server(403, emptyMap(), """{"error":"invalid_grant","error_description":"bad"}""")
         val f = fixture(tokenOutcome = Result.Failure(server))
         assertEquals(
             Result.Failure(WebAuthError.ApiError("invalid_grant", "bad", 403)),
