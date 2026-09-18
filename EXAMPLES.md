@@ -52,6 +52,12 @@ val auth0 = Auth0(account)
   - [Credentials Manager errors](#credentials-manager-errors)
 - [My Account API](#my-account-api-android--ios)
   - [Enroll a passkey](#enroll-a-passkey)
+  - [Enroll an authenticator app (TOTP)](#enroll-an-authenticator-app-totp)
+  - [Enroll push notifications](#enroll-push-notifications)
+  - [Enroll email](#enroll-email)
+  - [Enroll phone](#enroll-phone)
+  - [Enroll a recovery code](#enroll-a-recovery-code)
+  - [Enroll a password](#enroll-a-password)
   - [My Account API errors](#my-account-api-errors)
 - [DPoP](#dpop-android--ios)
 - [Networking](#networking-android--ios)
@@ -781,6 +787,142 @@ On success `verifyPasskeyEnrollment` returns a `PasskeyAuthenticationMethod`
 describing the enrolled passkey — its `id`, `credential`, `createdAt`, and the
 `relyingPartyId` it is bound to. See the sample apps for complete,
 platform-specific ceremony code.
+
+### Enroll an authenticator app (TOTP)
+
+TOTP, push, email, phone, recovery code, and password enrollments share the same
+two-step shape: request a challenge, then verify it. The challenge carries the
+`authenticationMethodId` and `authSession` you hand back to the matching
+`verify…` call.
+
+> [!NOTE]
+> Every enrollment needs the `create:me:authentication_methods` scope on the
+> access token, and the factor must be enabled for your tenant.
+
+```kotlin
+when (val result = myAccount.totpEnrollmentChallenge()) {
+    is Result.Success -> {
+        val challenge = result.data
+        // Show challenge.barcodeUri as a QR code, or challenge.manualInputCode for
+        // manual entry, then verify the code from the user's authenticator app.
+        myAccount.verifyTotpEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+            otpCode = "123456",
+        )
+    }
+    is Result.Failure -> { /* result.error is a MyAccountError */ }
+}
+```
+
+### Enroll push notifications
+
+The challenge's `barcodeUri` is a QR code the user scans in Auth0 Guardian. Once
+they approve the prompt, verify the enrollment.
+
+```kotlin
+when (val result = myAccount.pushNotificationEnrollmentChallenge()) {
+    is Result.Success -> {
+        val challenge = result.data
+        // Show challenge.barcodeUri as a QR code for the Guardian app.
+        myAccount.verifyPushNotificationEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+        )
+    }
+    is Result.Failure -> { /* handle */ }
+}
+```
+
+### Enroll email
+
+Sends a one-time code to the address; verify the code the user receives.
+
+```kotlin
+when (val result = myAccount.emailEnrollmentChallenge(email = "user@example.com")) {
+    is Result.Success -> {
+        val challenge = result.data
+        myAccount.verifyEmailEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+            otpCode = "123456",
+        )
+    }
+    is Result.Failure -> { /* handle */ }
+}
+```
+
+### Enroll phone
+
+Sends a one-time code over SMS or voice — choose the channel with
+`preferredAuthenticationMethod`.
+
+```kotlin
+import com.auth0.kmp.myaccount.model.PhoneAuthenticationMethodType
+
+when (
+    val result = myAccount.phoneEnrollmentChallenge(
+        phoneNumber = "+15551234567",
+        preferredAuthenticationMethod = PhoneAuthenticationMethodType.SMS,
+    )
+) {
+    is Result.Success -> {
+        val challenge = result.data
+        myAccount.verifyPhoneEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+            otpCode = "123456",
+        )
+    }
+    is Result.Failure -> { /* handle */ }
+}
+```
+
+### Enroll a recovery code
+
+The challenge returns the `recoveryCode`. Show it once and require the user to
+save it, then verify to activate it.
+
+```kotlin
+when (val result = myAccount.recoveryCodeEnrollmentChallenge()) {
+    is Result.Success -> {
+        val challenge = result.data
+        // Display challenge.recoveryCode and confirm the user has stored it —
+        // it is shown only once.
+        myAccount.verifyRecoveryCodeEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+        )
+    }
+    is Result.Failure -> { /* handle */ }
+}
+```
+
+### Enroll a password
+
+The challenge returns the tenant's `passwordPolicy`, so you can validate the new
+password before submitting it. Both `userIdentityId` and `connection` are
+optional.
+
+```kotlin
+when (
+    val result = myAccount.passwordEnrollmentChallenge(
+        userIdentityId = "auth0|abc123",
+        connection = "Username-Password-Authentication",
+    )
+) {
+    is Result.Success -> {
+        val challenge = result.data
+        // Validate the new password against challenge.passwordPolicy first.
+        myAccount.verifyPasswordEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+            newPassword = "a-new-secret-password",
+        )
+    }
+    is Result.Failure -> { /* handle */ }
+}
+```
 
 ### My Account API errors
 
