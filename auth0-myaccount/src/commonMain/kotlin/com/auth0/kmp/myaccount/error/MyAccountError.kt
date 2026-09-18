@@ -41,6 +41,15 @@ public sealed interface MyAccountError : Auth0Error {
     public data class Network(val cause: TransportError) : MyAccountError
 
     /**
+     * The request succeeded but the response was missing data the SDK required to
+     * continue the operation — for enrollment, the identifier of the newly created
+     * authentication method.
+     *
+     * @param message a description of what the response was missing.
+     */
+    public data class MalformedResponse(val message: String) : MyAccountError
+
+    /**
      * The request failed in a way that could not be interpreted as any other
      * case; retrying is unlikely to help on its own.
      *

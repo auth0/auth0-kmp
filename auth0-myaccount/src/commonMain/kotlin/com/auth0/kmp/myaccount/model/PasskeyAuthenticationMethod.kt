@@ -1,6 +1,5 @@
 package com.auth0.kmp.myaccount.model
 
-import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 /**
@@ -16,7 +15,6 @@ import kotlin.time.Instant
  * @param relyingPartyId relying party Id for the domain.
  * @param usage the ways this authentication method may be used.
  */
-@OptIn(ExperimentalTime::class)
 public data class PasskeyAuthenticationMethod(
     val id: String,
     val type: String,

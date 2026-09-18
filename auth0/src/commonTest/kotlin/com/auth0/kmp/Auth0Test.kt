@@ -20,9 +20,22 @@ import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.credentials.Storage
 import com.auth0.kmp.myaccount.MyAccountClient
 import com.auth0.kmp.myaccount.error.MyAccountError
+import com.auth0.kmp.myaccount.model.EmailAuthenticationMethod
+import com.auth0.kmp.myaccount.model.EmailEnrollmentChallenge
 import com.auth0.kmp.myaccount.model.PasskeyAuthenticationMethod
 import com.auth0.kmp.myaccount.model.PasskeyEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.PasswordAuthenticationMethod
+import com.auth0.kmp.myaccount.model.PasswordEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.PhoneAuthenticationMethod
+import com.auth0.kmp.myaccount.model.PhoneAuthenticationMethodType
+import com.auth0.kmp.myaccount.model.PhoneEnrollmentChallenge
 import com.auth0.kmp.myaccount.model.PublicKeyCredentials as MyAccountPublicKeyCredentials
+import com.auth0.kmp.myaccount.model.PushAuthenticationMethod
+import com.auth0.kmp.myaccount.model.PushEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.RecoveryCodeAuthenticationMethod
+import com.auth0.kmp.myaccount.model.RecoveryCodeEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.TotpAuthenticationMethod
+import com.auth0.kmp.myaccount.model.TotpEnrollmentChallenge
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.request.NetworkRequest
 import com.auth0.kmp.networking.retry.RetryPolicy
@@ -194,6 +207,75 @@ private class FakeMyAccountClient : MyAccountClient {
         challenge: PasskeyEnrollmentChallenge,
         options: RequestOptions,
     ): Result<PasskeyAuthenticationMethod, MyAccountError> = error("not used")
+
+    override suspend fun totpEnrollmentChallenge(
+        options: RequestOptions,
+    ): Result<TotpEnrollmentChallenge, MyAccountError> = error("not used")
+
+    override suspend fun verifyTotpEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        otpCode: String,
+        options: RequestOptions,
+    ): Result<TotpAuthenticationMethod, MyAccountError> = error("not used")
+
+    override suspend fun pushNotificationEnrollmentChallenge(
+        options: RequestOptions,
+    ): Result<PushEnrollmentChallenge, MyAccountError> = error("not used")
+
+    override suspend fun verifyPushNotificationEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        options: RequestOptions,
+    ): Result<PushAuthenticationMethod, MyAccountError> = error("not used")
+
+    override suspend fun emailEnrollmentChallenge(
+        email: String,
+        options: RequestOptions,
+    ): Result<EmailEnrollmentChallenge, MyAccountError> = error("not used")
+
+    override suspend fun verifyEmailEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        otpCode: String,
+        options: RequestOptions,
+    ): Result<EmailAuthenticationMethod, MyAccountError> = error("not used")
+
+    override suspend fun phoneEnrollmentChallenge(
+        phoneNumber: String,
+        preferredAuthenticationMethod: PhoneAuthenticationMethodType?,
+        options: RequestOptions,
+    ): Result<PhoneEnrollmentChallenge, MyAccountError> = error("not used")
+
+    override suspend fun verifyPhoneEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        otpCode: String,
+        options: RequestOptions,
+    ): Result<PhoneAuthenticationMethod, MyAccountError> = error("not used")
+
+    override suspend fun recoveryCodeEnrollmentChallenge(
+        options: RequestOptions,
+    ): Result<RecoveryCodeEnrollmentChallenge, MyAccountError> = error("not used")
+
+    override suspend fun verifyRecoveryCodeEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        options: RequestOptions,
+    ): Result<RecoveryCodeAuthenticationMethod, MyAccountError> = error("not used")
+
+    override suspend fun passwordEnrollmentChallenge(
+        userIdentityId: String?,
+        connection: String?,
+        options: RequestOptions,
+    ): Result<PasswordEnrollmentChallenge, MyAccountError> = error("not used")
+
+    override suspend fun verifyPasswordEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        newPassword: String,
+        options: RequestOptions,
+    ): Result<PasswordAuthenticationMethod, MyAccountError> = error("not used")
 }
 
 /** Records which network client each builder saw and how many times it ran. */

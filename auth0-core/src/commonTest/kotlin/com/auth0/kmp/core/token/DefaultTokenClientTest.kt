@@ -68,7 +68,6 @@ private class FakeNetworkClient(
 
 private class StubGrant(override val parameters: JsonObject) : TokenGrant
 
-@OptIn(kotlin.time.ExperimentalTime::class)
 class DefaultTokenClientTest {
 
     private val account = Auth0Account(clientId = "client", domain = "example.auth0.com")

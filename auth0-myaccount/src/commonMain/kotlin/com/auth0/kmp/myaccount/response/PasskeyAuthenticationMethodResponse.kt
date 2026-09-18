@@ -6,7 +6,6 @@ import com.auth0.kmp.myaccount.model.PasskeyCredential
 import com.auth0.kmp.myaccount.model.CredentialDeviceType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 @Serializable
@@ -38,7 +37,6 @@ public enum class CredentialDeviceTypeResponse {
     MULTI_DEVICE,
 }
 
-@OptIn(ExperimentalTime::class)
 @InternalAuth0Api
 public fun PasskeyAuthenticationMethodResponse.toPasskeyAuthenticationMethod(): PasskeyAuthenticationMethod =
     PasskeyAuthenticationMethod(

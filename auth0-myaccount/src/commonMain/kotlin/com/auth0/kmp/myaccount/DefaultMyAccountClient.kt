@@ -3,14 +3,52 @@ package com.auth0.kmp.myaccount
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.result.Result
+import com.auth0.kmp.core.result.flatMap
 import com.auth0.kmp.myaccount.error.MyAccountError
+import com.auth0.kmp.myaccount.model.EmailAuthenticationMethod
+import com.auth0.kmp.myaccount.model.EmailEnrollmentChallenge
 import com.auth0.kmp.myaccount.model.PasskeyAuthenticationMethod
 import com.auth0.kmp.myaccount.model.PasskeyEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.PasswordAuthenticationMethod
+import com.auth0.kmp.myaccount.model.PasswordEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.PhoneAuthenticationMethod
+import com.auth0.kmp.myaccount.model.PhoneAuthenticationMethodType
+import com.auth0.kmp.myaccount.model.PhoneEnrollmentChallenge
 import com.auth0.kmp.myaccount.model.PublicKeyCredentials
+import com.auth0.kmp.myaccount.model.PushAuthenticationMethod
+import com.auth0.kmp.myaccount.model.PushEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.RecoveryCodeAuthenticationMethod
+import com.auth0.kmp.myaccount.model.RecoveryCodeEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.TotpAuthenticationMethod
+import com.auth0.kmp.myaccount.model.TotpEnrollmentChallenge
+import com.auth0.kmp.myaccount.response.EmailAuthenticationMethodResponse
+import com.auth0.kmp.myaccount.response.EmailEnrollmentChallengeResponse
 import com.auth0.kmp.myaccount.response.PasskeyAuthenticationMethodResponse
 import com.auth0.kmp.myaccount.response.PasskeyEnrollmentChallengeResponse
+import com.auth0.kmp.myaccount.response.PasswordAuthenticationMethodResponse
+import com.auth0.kmp.myaccount.response.PasswordEnrollmentChallengeResponse
+import com.auth0.kmp.myaccount.response.PhoneAuthenticationMethodResponse
+import com.auth0.kmp.myaccount.response.PhoneEnrollmentChallengeResponse
+import com.auth0.kmp.myaccount.response.PushAuthenticationMethodResponse
+import com.auth0.kmp.myaccount.response.PushEnrollmentChallengeResponse
+import com.auth0.kmp.myaccount.response.RecoveryCodeAuthenticationMethodResponse
+import com.auth0.kmp.myaccount.response.RecoveryCodeEnrollmentChallengeResponse
+import com.auth0.kmp.myaccount.response.TotpAuthenticationMethodResponse
+import com.auth0.kmp.myaccount.response.TotpEnrollmentChallengeResponse
+import com.auth0.kmp.myaccount.response.toEmailAuthenticationMethod
+import com.auth0.kmp.myaccount.response.toEmailEnrollmentChallenge
 import com.auth0.kmp.myaccount.response.toPasskeyAuthenticationMethod
 import com.auth0.kmp.myaccount.response.toPasskeyEnrollmentChallenge
+import com.auth0.kmp.myaccount.response.toPasswordAuthenticationMethod
+import com.auth0.kmp.myaccount.response.toPasswordEnrollmentChallenge
+import com.auth0.kmp.myaccount.response.toPhoneAuthenticationMethod
+import com.auth0.kmp.myaccount.response.toPhoneEnrollmentChallenge
+import com.auth0.kmp.myaccount.response.toPushAuthenticationMethod
+import com.auth0.kmp.myaccount.response.toPushEnrollmentChallenge
+import com.auth0.kmp.myaccount.response.toRecoveryCodeAuthenticationMethod
+import com.auth0.kmp.myaccount.response.toRecoveryCodeEnrollmentChallenge
+import com.auth0.kmp.myaccount.response.toTotpAuthenticationMethod
+import com.auth0.kmp.myaccount.response.toTotpEnrollmentChallenge
 import com.auth0.kmp.myaccount.request.toPasskeyEnrollmentCredentialRequest
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.request.HttpMethod
@@ -47,11 +85,17 @@ internal class DefaultMyAccountClient(
         )
 
         return networkClient.request(request, options.retryPolicy) { responseBody, headers ->
-            val authenticationMethodId = headers.locationLastSegment()
-                ?: throw MissingLocationHeaderException()
-            json.decodeFromString<PasskeyEnrollmentChallengeResponse>(responseBody)
-                .toPasskeyEnrollmentChallenge(authenticationMethodId)
-        }.toMyAccountResult()
+            json.decodeFromString<PasskeyEnrollmentChallengeResponse>(responseBody) to
+                headers.locationLastSegment()
+        }
+            .toMyAccountResult()
+            .flatMap { (response, authenticationMethodId) ->
+                if (authenticationMethodId == null) {
+                    Result.Failure(MyAccountError.MalformedResponse(MISSING_ID_MESSAGE))
+                } else {
+                    Result.Success(response.toPasskeyEnrollmentChallenge(authenticationMethodId))
+                }
+            }
     }
 
     override suspend fun verifyPasskeyEnrollment(
@@ -76,6 +120,328 @@ internal class DefaultMyAccountClient(
         }.toMyAccountResult()
     }
 
+    override suspend fun totpEnrollmentChallenge(
+        options: RequestOptions,
+    ): Result<TotpEnrollmentChallenge, MyAccountError> {
+        val body = jsonBody(options) {
+            put("type", "totp")
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) { responseBody, headers ->
+            json.decodeFromString<TotpEnrollmentChallengeResponse>(responseBody) to
+                headers.locationLastSegment()
+        }
+            .toMyAccountResult()
+            .flatMap { (response, authenticationMethodId) ->
+                if (authenticationMethodId == null) {
+                    Result.Failure(MyAccountError.MalformedResponse(MISSING_ID_MESSAGE))
+                } else {
+                    Result.Success(response.toTotpEnrollmentChallenge(authenticationMethodId))
+                }
+            }
+    }
+
+    override suspend fun verifyTotpEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        otpCode: String,
+        options: RequestOptions,
+    ): Result<TotpAuthenticationMethod, MyAccountError> {
+        val body = jsonBody(options) {
+            put("auth_session", authSession)
+            put("otp_code", otpCode)
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods/$authenticationMethodId/verify",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) {
+            json.decodeFromString<TotpAuthenticationMethodResponse>(it).toTotpAuthenticationMethod()
+        }.toMyAccountResult()
+    }
+
+    override suspend fun pushNotificationEnrollmentChallenge(
+        options: RequestOptions,
+    ): Result<PushEnrollmentChallenge, MyAccountError> {
+        val body = jsonBody(options) {
+            put("type", "push-notification")
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) { responseBody, headers ->
+            json.decodeFromString<PushEnrollmentChallengeResponse>(responseBody) to
+                headers.locationLastSegment()
+        }
+            .toMyAccountResult()
+            .flatMap { (response, authenticationMethodId) ->
+                if (authenticationMethodId == null) {
+                    Result.Failure(MyAccountError.MalformedResponse(MISSING_ID_MESSAGE))
+                } else {
+                    Result.Success(response.toPushEnrollmentChallenge(authenticationMethodId))
+                }
+            }
+    }
+
+    override suspend fun verifyPushNotificationEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        options: RequestOptions,
+    ): Result<PushAuthenticationMethod, MyAccountError> {
+        val body = jsonBody(options) {
+            put("auth_session", authSession)
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods/$authenticationMethodId/verify",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) {
+            json.decodeFromString<PushAuthenticationMethodResponse>(it).toPushAuthenticationMethod()
+        }.toMyAccountResult()
+    }
+
+    override suspend fun emailEnrollmentChallenge(
+        email: String,
+        options: RequestOptions,
+    ): Result<EmailEnrollmentChallenge, MyAccountError> {
+        val body = jsonBody(options) {
+            put("type", "email")
+            put("email", email)
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) { responseBody, headers ->
+            json.decodeFromString<EmailEnrollmentChallengeResponse>(responseBody) to
+                headers.locationLastSegment()
+        }
+            .toMyAccountResult()
+            .flatMap { (response, authenticationMethodId) ->
+                if (authenticationMethodId == null) {
+                    Result.Failure(MyAccountError.MalformedResponse(MISSING_ID_MESSAGE))
+                } else {
+                    Result.Success(response.toEmailEnrollmentChallenge(authenticationMethodId))
+                }
+            }
+    }
+
+    override suspend fun verifyEmailEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        otpCode: String,
+        options: RequestOptions,
+    ): Result<EmailAuthenticationMethod, MyAccountError> {
+        val body = jsonBody(options) {
+            put("auth_session", authSession)
+            put("otp_code", otpCode)
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods/$authenticationMethodId/verify",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) {
+            json.decodeFromString<EmailAuthenticationMethodResponse>(it).toEmailAuthenticationMethod()
+        }.toMyAccountResult()
+    }
+
+    override suspend fun phoneEnrollmentChallenge(
+        phoneNumber: String,
+        preferredAuthenticationMethod: PhoneAuthenticationMethodType?,
+        options: RequestOptions,
+    ): Result<PhoneEnrollmentChallenge, MyAccountError> {
+        val body = jsonBody(options) {
+            put("type", "phone")
+            put("phone_number", phoneNumber)
+            preferredAuthenticationMethod?.let {
+                put("preferred_authentication_method", it.toApiValue())
+            }
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) { responseBody, headers ->
+            json.decodeFromString<PhoneEnrollmentChallengeResponse>(responseBody) to
+                headers.locationLastSegment()
+        }
+            .toMyAccountResult()
+            .flatMap { (response, authenticationMethodId) ->
+                if (authenticationMethodId == null) {
+                    Result.Failure(MyAccountError.MalformedResponse(MISSING_ID_MESSAGE))
+                } else {
+                    Result.Success(response.toPhoneEnrollmentChallenge(authenticationMethodId))
+                }
+            }
+    }
+
+    override suspend fun verifyPhoneEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        otpCode: String,
+        options: RequestOptions,
+    ): Result<PhoneAuthenticationMethod, MyAccountError> {
+        val body = jsonBody(options) {
+            put("auth_session", authSession)
+            put("otp_code", otpCode)
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods/$authenticationMethodId/verify",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) {
+            json.decodeFromString<PhoneAuthenticationMethodResponse>(it).toPhoneAuthenticationMethod()
+        }.toMyAccountResult()
+    }
+
+    override suspend fun recoveryCodeEnrollmentChallenge(
+        options: RequestOptions,
+    ): Result<RecoveryCodeEnrollmentChallenge, MyAccountError> {
+        val body = jsonBody(options) {
+            put("type", "recovery-code")
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) { responseBody, headers ->
+            json.decodeFromString<RecoveryCodeEnrollmentChallengeResponse>(responseBody) to
+                headers.locationLastSegment()
+        }
+            .toMyAccountResult()
+            .flatMap { (response, authenticationMethodId) ->
+                if (authenticationMethodId == null) {
+                    Result.Failure(MyAccountError.MalformedResponse(MISSING_ID_MESSAGE))
+                } else {
+                    Result.Success(response.toRecoveryCodeEnrollmentChallenge(authenticationMethodId))
+                }
+            }
+    }
+
+    override suspend fun verifyRecoveryCodeEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        options: RequestOptions,
+    ): Result<RecoveryCodeAuthenticationMethod, MyAccountError> {
+        val body = jsonBody(options) {
+            put("auth_session", authSession)
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods/$authenticationMethodId/verify",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) {
+            json.decodeFromString<RecoveryCodeAuthenticationMethodResponse>(it)
+                .toRecoveryCodeAuthenticationMethod()
+        }.toMyAccountResult()
+    }
+
+    override suspend fun passwordEnrollmentChallenge(
+        userIdentityId: String?,
+        connection: String?,
+        options: RequestOptions,
+    ): Result<PasswordEnrollmentChallenge, MyAccountError> {
+        val body = jsonBody(options) {
+            put("type", "password")
+            userIdentityId?.let { put("identity_user_id", it) }
+            connection?.let { put("connection", it) }
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) { responseBody, headers ->
+            json.decodeFromString<PasswordEnrollmentChallengeResponse>(responseBody) to
+                headers.locationLastSegment()
+        }
+            .toMyAccountResult()
+            .flatMap { (response, authenticationMethodId) ->
+                if (authenticationMethodId == null) {
+                    Result.Failure(MyAccountError.MalformedResponse(MISSING_ID_MESSAGE))
+                } else {
+                    Result.Success(response.toPasswordEnrollmentChallenge(authenticationMethodId))
+                }
+            }
+    }
+
+    override suspend fun verifyPasswordEnrollment(
+        authenticationMethodId: String,
+        authSession: String,
+        newPassword: String,
+        options: RequestOptions,
+    ): Result<PasswordAuthenticationMethod, MyAccountError> {
+        val body = jsonBody(options) {
+            put("auth_session", authSession)
+            put("new_password", newPassword)
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.POST,
+            path = "/me/v1/authentication-methods/$authenticationMethodId/verify",
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(request, options.retryPolicy) {
+            json.decodeFromString<PasswordAuthenticationMethodResponse>(it)
+                .toPasswordAuthenticationMethod()
+        }.toMyAccountResult()
+    }
+
+    private fun PhoneAuthenticationMethodType.toApiValue(): String =
+        when (this) {
+            PhoneAuthenticationMethodType.SMS -> "sms"
+            PhoneAuthenticationMethodType.VOICE -> "voice"
+        }
+
     private fun authHeaders(options: RequestOptions): Map<String, String> {
         val scheme = if (useDPoP) "DPoP" else "Bearer"
         return options.headers + ("Authorization" to "$scheme $accessToken")
@@ -93,13 +459,12 @@ internal class DefaultMyAccountClient(
 }
 
 /**
- * Signals that a successful challenge response did not carry the `Location`
- * header the authentication method identifier is read from. Thrown inside the
- * deserialize lambda so it surfaces as [com.auth0.kmp.core.error.TransportError.Unknown]
- * and, in turn, [MyAccountError.Unknown] — never as an uncaught throw.
+ * Reported as [MyAccountError.MalformedResponse] when a successful challenge
+ * response does not carry the authentication method identifier the SDK reads
+ * from the `Location` header.
  */
-internal class MissingLocationHeaderException :
-    Exception("Authentication method ID not found in Location header.")
+private const val MISSING_ID_MESSAGE =
+    "The authentication method identifier was missing from the response."
 
 /**
  * Returns the last path segment of the `Location` header, URL-decoded, or `null`
