@@ -8,6 +8,8 @@ import com.auth0.kmp.core.credentials.CredentialsManager
 import com.auth0.kmp.credentials.Storage
 import com.auth0.kmp.credentials.credentialsManager
 import com.auth0.kmp.credentials.defaultCredentialsStoreKey
+import com.auth0.kmp.myaccount.MyAccountClient
+import com.auth0.kmp.myaccount.myAccountClient
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.networkClient
 import com.auth0.kmp.webauth.WebAuthClient
@@ -29,6 +31,7 @@ public class Auth0 internal constructor(
     private val buildWebAuth: (NetworkClient) -> WebAuthClient,
     private val buildAuthentication: (NetworkClient) -> AuthenticationClient,
     private val buildCredentials: (NetworkClient, storeKey: String, storage: Storage?) -> CredentialsManager,
+    private val buildMyAccount: (NetworkClient, accessToken: String) -> MyAccountClient,
 ) : AutoCloseable {
 
     /**
@@ -45,6 +48,7 @@ public class Auth0 internal constructor(
             if (storage == null) credentialsManager(account, network, storeKey)
             else credentialsManager(account, network, storeKey, storage)
         },
+        buildMyAccount = { network, accessToken -> myAccountClient(account, accessToken, network) },
     )
 
     /** Performs browser-based (Web Auth) login and logout. */
@@ -85,6 +89,21 @@ public class Auth0 internal constructor(
         storage: Storage,
     ): CredentialsManager =
         buildCredentials(networkClient, storeKey, storage)
+
+    /**
+     * Creates a My Account API client backed by the shared transport, authorized
+     * by [accessToken].
+     *
+     * Unlike [webAuth] and [authentication], this returns a new client on every
+     * call; it is not cached, since the access token differs per call. The
+     * returned client does not own the shared transport; release it via [close].
+     *
+     * @param accessToken the My Account API access token authorizing the requests.
+     */
+    public fun myAccount(
+        accessToken: String,
+    ): MyAccountClient =
+        buildMyAccount(networkClient, accessToken)
 
     /** Releases the shared network transport. Clients must not be used afterwards. */
     override fun close() {

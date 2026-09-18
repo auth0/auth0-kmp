@@ -74,7 +74,7 @@ class DefaultNetworkClientTest {
         ) { it }
 
         assertEquals(3, attempts)
-        assertEquals(Result.Failure(TransportError.Server(500, "boom")), result)
+        assertEquals(Result.Failure(TransportError.Server(500, emptyMap(), "boom")), result)
     }
 
     @Test

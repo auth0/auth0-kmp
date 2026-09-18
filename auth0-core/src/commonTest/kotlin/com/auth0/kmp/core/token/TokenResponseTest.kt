@@ -6,14 +6,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 private class FixedTestClock(private val at: Instant) : Clock {
     override fun now(): Instant = at
 }
 
-@OptIn(InternalAuth0Api::class, ExperimentalTime::class)
+@OptIn(InternalAuth0Api::class)
 class TokenResponseTest {
 
     private fun response(
