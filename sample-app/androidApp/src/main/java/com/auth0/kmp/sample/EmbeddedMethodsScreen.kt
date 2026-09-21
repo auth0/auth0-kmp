@@ -25,6 +25,7 @@ fun EmbeddedMethodsScreen(
     onSignup: () -> Unit,
     onPasskeySignup: () -> Unit,
     onPasskeyLogin: () -> Unit,
+    onPasswordless: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -70,6 +71,14 @@ fun EmbeddedMethodsScreen(
             title = "Passkey login",
             description = "Sign in with an existing passkey",
             onClick = onPasskeyLogin,
+        )
+
+        Spacer(Modifier.height(Spacing.md))
+
+        MethodCard(
+            title = "Passwordless (email)",
+            description = "Get a one-time code by email and sign in",
+            onClick = onPasswordless,
         )
     }
 }

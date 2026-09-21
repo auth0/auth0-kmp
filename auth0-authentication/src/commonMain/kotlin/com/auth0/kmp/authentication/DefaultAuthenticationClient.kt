@@ -5,10 +5,12 @@ import com.auth0.kmp.authentication.error.toAuthenticationError
 import com.auth0.kmp.authentication.model.DatabaseUser
 import com.auth0.kmp.authentication.model.PasskeyLoginChallenge
 import com.auth0.kmp.authentication.model.PasskeyRegistrationChallenge
+import com.auth0.kmp.authentication.model.PasswordlessType
 import com.auth0.kmp.authentication.model.PublicKeyCredentials
 import com.auth0.kmp.authentication.model.SignupProfile
 import com.auth0.kmp.authentication.request.PasskeyGrant
 import com.auth0.kmp.authentication.request.PasswordRealmGrant
+import com.auth0.kmp.authentication.request.PasswordlessLoginGrant
 import com.auth0.kmp.authentication.response.DatabaseUserResponse
 import com.auth0.kmp.authentication.response.PasskeyLoginChallengeResponse
 import com.auth0.kmp.authentication.response.PasskeyRegistrationChallengeResponse
@@ -267,6 +269,104 @@ internal class DefaultAuthenticationClient(
             clientId = clientId,
             realm = realm,
             organization = organization,
+            scope = scope,
+            audience = audience,
+            extraParameters = options.parameters,
+        )
+
+        return tokenClient.fetchToken(grant, options.headers, options.retryPolicy)
+            .foldToCredentials(idTokenValidator, validateIdToken = true)
+    }
+
+    override suspend fun passwordlessWithEmail(
+        email: String,
+        type: PasswordlessType,
+        connection: String,
+        options: RequestOptions,
+    ): Result<Unit, AuthenticationError> {
+        if (email.isBlank()) {
+            return Result.Failure(AuthenticationError.InvalidInput("email must not be blank"))
+        }
+        if (connection.isBlank()) {
+            return Result.Failure(AuthenticationError.InvalidInput("connection must not be blank"))
+        }
+
+        val body = jsonBody(options) {
+            put("client_id", clientId)
+            put("connection", connection)
+            put("email", email)
+            put("send", type.value)
+        }
+
+        return post("/passwordless/start", body, options) { }
+    }
+
+    override suspend fun passwordlessWithSMS(
+        phoneNumber: String,
+        type: PasswordlessType,
+        connection: String,
+        options: RequestOptions,
+    ): Result<Unit, AuthenticationError> {
+        if (phoneNumber.isBlank()) {
+            return Result.Failure(AuthenticationError.InvalidInput("phoneNumber must not be blank"))
+        }
+        if (connection.isBlank()) {
+            return Result.Failure(AuthenticationError.InvalidInput("connection must not be blank"))
+        }
+
+        val body = jsonBody(options) {
+            put("client_id", clientId)
+            put("connection", connection)
+            put("phone_number", phoneNumber)
+            put("send", type.value)
+        }
+
+        return post("/passwordless/start", body, options) { }
+    }
+
+    override suspend fun loginWithEmail(
+        email: String,
+        code: String,
+        realm: String,
+        audience: String?,
+        scope: String,
+        options: RequestOptions,
+    ): Result<Credentials, AuthenticationError> =
+        loginWithPasswordlessCode(email, code, realm, audience, scope, options)
+
+    override suspend fun loginWithSMS(
+        phoneNumber: String,
+        code: String,
+        realm: String,
+        audience: String?,
+        scope: String,
+        options: RequestOptions,
+    ): Result<Credentials, AuthenticationError> =
+        loginWithPasswordlessCode(phoneNumber, code, realm, audience, scope, options)
+
+    private suspend fun loginWithPasswordlessCode(
+        username: String,
+        code: String,
+        realm: String,
+        audience: String?,
+        scope: String,
+        options: RequestOptions,
+    ): Result<Credentials, AuthenticationError> {
+        if (username.isBlank()) {
+            return Result.Failure(AuthenticationError.InvalidInput("username must not be blank"))
+        }
+        if (code.isBlank()) {
+            return Result.Failure(AuthenticationError.InvalidInput("code must not be blank"))
+        }
+        if (realm.isBlank()) {
+            return Result.Failure(AuthenticationError.InvalidInput("realm must not be blank"))
+        }
+
+        val grant = PasswordlessLoginGrant(
+            username = username,
+            otp = code,
+            realm = realm,
+            clientId = clientId,
             scope = scope,
             audience = audience,
             extraParameters = options.parameters,

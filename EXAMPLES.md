@@ -402,6 +402,50 @@ Invalidates a refresh token server-side. Call this on logout.
 auth0.authentication.revoke(refreshToken = credentials.refreshToken!!)
 ```
 
+### Passwordless
+
+Sign a user in without a password by sending them a one-time code, then
+exchanging that code for credentials. The flow is two steps: start it with
+[`passwordlessWithEmail`](#passwordless) or `passwordlessWithSMS`, then complete
+it with [`loginWithEmail`](#passwordless) or `loginWithSMS` once the user enters
+the code they received.
+
+> [!IMPORTANT]
+> Passwordless requires the **Passwordless OTP** grant type to be enabled on your
+> Auth0 application, and the corresponding `email` or `sms` connection to be
+> enabled on your tenant.
+
+**Email:**
+
+```kotlin
+// 1. Send a one-time code to the user's email. Succeeds with Unit.
+auth0.authentication.passwordlessWithEmail(email = "user@example.com")
+
+// 2. Exchange the code the user received for credentials.
+val result = auth0.authentication.loginWithEmail(
+    email = "user@example.com",
+    code = "123456",
+)
+```
+
+**SMS:**
+
+```kotlin
+// 1. Send a one-time code over SMS. The phone number must be in E.164 format.
+auth0.authentication.passwordlessWithSMS(phoneNumber = "+15551234567")
+
+// 2. Exchange the code the user received for credentials.
+val result = auth0.authentication.loginWithSMS(
+    phoneNumber = "+15551234567",
+    code = "123456",
+)
+```
+
+By default the code is delivered as a `code` (`PasswordlessType.CODE`) over the
+`email`/`sms` connections. Pass a different `type` to send a magic `link`
+instead, or a custom `connection` name. The `loginWith*` calls also accept
+`audience`, `scope`, and a `RequestOptions`.
+
 ### Passkeys
 
 Passkey support is split so your app can run the platform WebAuthn ceremony: the
