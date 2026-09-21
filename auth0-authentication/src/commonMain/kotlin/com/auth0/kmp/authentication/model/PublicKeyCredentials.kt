@@ -1,8 +1,5 @@
 package com.auth0.kmp.authentication.model
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-
 /**
  * The result of a WebAuthn ceremony run by the caller, sent back to Auth0 to
  * complete a passkey sign-in or registration.
@@ -18,14 +15,13 @@ import kotlinx.serialization.Serializable
  * @param authenticatorAttachment how the authenticator is attached, e.g. `platform`.
  * @param clientExtensionResults the results of any requested client extensions.
  */
-@Serializable
 public data class PublicKeyCredentials(
-    @SerialName("id") val id: String,
-    @SerialName("rawId") val rawId: String,
-    @SerialName("type") val type: String,
-    @SerialName("response") val response: AuthenticatorResponse,
-    @SerialName("authenticatorAttachment") val authenticatorAttachment: String? = null,
-    @SerialName("clientExtensionResults") val clientExtensionResults: ClientExtensionResults? = null,
+    val id: String,
+    val rawId: String,
+    val type: String,
+    val response: AuthenticatorResponse,
+    val authenticatorAttachment: String? = null,
+    val clientExtensionResults: ClientExtensionResults? = null,
 )
 
 /**
@@ -38,14 +34,13 @@ public data class PublicKeyCredentials(
  * @param userHandle the base64url-encoded user handle (assertion only).
  * @param transports the transports the authenticator supports (registration only).
  */
-@Serializable
 public data class AuthenticatorResponse(
-    @SerialName("clientDataJSON") val clientDataJSON: String,
-    @SerialName("attestationObject") val attestationObject: String? = null,
-    @SerialName("authenticatorData") val authenticatorData: String? = null,
-    @SerialName("signature") val signature: String? = null,
-    @SerialName("userHandle") val userHandle: String? = null,
-    @SerialName("transports") val transports: List<String>? = null,
+    val clientDataJSON: String,
+    val attestationObject: String? = null,
+    val authenticatorData: String? = null,
+    val signature: String? = null,
+    val userHandle: String? = null,
+    val transports: List<String>? = null,
 )
 
 /**
@@ -53,9 +48,8 @@ public data class AuthenticatorResponse(
  *
  * @param credProps the credential-properties extension result.
  */
-@Serializable
 public data class ClientExtensionResults(
-    @SerialName("credProps") val credProps: CredProps,
+    val credProps: CredProps,
 )
 
 /**
@@ -63,7 +57,6 @@ public data class ClientExtensionResults(
  *
  * @param rk whether a discoverable (resident) credential was created.
  */
-@Serializable
 public data class CredProps(
-    @SerialName("rk") val rk: Boolean,
+    val rk: Boolean,
 )

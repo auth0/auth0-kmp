@@ -25,7 +25,7 @@ internal class PasskeyGrant(
         put("grant_type", "urn:okta:params:oauth:grant-type:webauthn")
         put("client_id", clientId)
         put("auth_session", authSession)
-        put("authn_response", json.encodeToJsonElement(authResponse))
+        put("authn_response", json.encodeToJsonElement(authResponse.toPublicKeyCredentialsRequest()))
         realm?.let { put("realm", it) }
         organization?.let { put("organization", it) }
         put("scope", scope)

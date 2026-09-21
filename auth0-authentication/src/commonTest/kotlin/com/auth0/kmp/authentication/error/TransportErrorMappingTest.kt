@@ -26,6 +26,7 @@ class TransportErrorMappingTest {
     fun serverWithParseableBody_mapsToApiError() {
         val server = TransportError.Server(
             403,
+            emptyMap(),
             """{"error":"invalid_grant","error_description":"Wrong creds"}""",
         )
 
@@ -37,7 +38,7 @@ class TransportErrorMappingTest {
 
     @Test
     fun serverWithoutDescription_fallsBackToCode() {
-        val server = TransportError.Server(429, """{"error":"too_many_attempts"}""")
+        val server = TransportError.Server(429, emptyMap(), """{"error":"too_many_attempts"}""")
 
         assertEquals(
             AuthenticationError.ApiError("too_many_attempts", "too_many_attempts", 429),
@@ -47,21 +48,21 @@ class TransportErrorMappingTest {
 
     @Test
     fun serverWithUnparseableBody_mapsToUnknown() {
-        val server = TransportError.Server(502, "<html>502</html>")
+        val server = TransportError.Server(502, emptyMap(), "<html>502</html>")
 
         assertEquals(AuthenticationError.Unknown(server), server.toAuthenticationError())
     }
 
     @Test
     fun serverWithNullBody_mapsToUnknown() {
-        val server = TransportError.Server(500, null)
+        val server = TransportError.Server(500, emptyMap(), null)
 
         assertEquals(AuthenticationError.Unknown(server), server.toAuthenticationError())
     }
 
     @Test
     fun serverWithJsonMissingError_mapsToUnknown() {
-        val server = TransportError.Server(400, """{"message":"bad"}""")
+        val server = TransportError.Server(400, emptyMap(), """{"message":"bad"}""")
 
         assertEquals(AuthenticationError.Unknown(server), server.toAuthenticationError())
     }

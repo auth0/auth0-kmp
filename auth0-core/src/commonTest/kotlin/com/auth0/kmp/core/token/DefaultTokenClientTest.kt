@@ -48,11 +48,18 @@ private class FakeNetworkClient(
         request: NetworkRequest,
         retryPolicy: RetryPolicy,
         deserialize: (String) -> T,
+    ): Result<T, TransportError> =
+        request(request, retryPolicy) { body, _ -> deserialize(body) }
+
+    override suspend fun <T> request(
+        request: NetworkRequest,
+        retryPolicy: RetryPolicy,
+        deserialize: (body: String, headers: Map<String, List<String>>) -> T,
     ): Result<T, TransportError> {
         lastRequest = request
         lastRetryPolicy = retryPolicy
         return when (outcome) {
-            is Result.Success -> Result.Success(deserialize(outcome.data))
+            is Result.Success -> Result.Success(deserialize(outcome.data, emptyMap()))
             is Result.Failure -> outcome
         }
     }
@@ -61,7 +68,6 @@ private class FakeNetworkClient(
 
 private class StubGrant(override val parameters: JsonObject) : TokenGrant
 
-@OptIn(kotlin.time.ExperimentalTime::class)
 class DefaultTokenClientTest {
 
     private val account = Auth0Account(clientId = "client", domain = "example.auth0.com")

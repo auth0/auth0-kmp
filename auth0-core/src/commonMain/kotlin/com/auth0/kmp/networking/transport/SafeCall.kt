@@ -12,6 +12,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
@@ -39,6 +40,30 @@ internal suspend fun <T> safeCall(
     url: String,
     request: NetworkRequest,
     deserialize: (String) -> T
+): Result<T, TransportError> =
+    safeCall(client, url, request) { body, _ -> deserialize(body) }
+
+/**
+ * Executes a single HTTP attempt and maps the outcome to a [Result], giving
+ * [deserialize] access to the response headers in addition to the body.
+ *
+ * Behaves exactly like the body-only overload otherwise: never throws for a
+ * network or protocol failure, and re-throws [CancellationException].
+ *
+ * @param client the HTTP client to execute the request with.
+ * @param url the fully resolved, absolute request URL.
+ * @param request the transport-level description of the request to send.
+ * @param deserialize converts a successful response into [T] from its body and
+ *   headers. Invoked only for a 2xx response; a failure here is reported as
+ *   [TransportError.Serialization].
+ * @return [Result.Success] with the deserialized value on a 2xx response, otherwise
+ *   [Result.Failure] with the mapped [TransportError].
+ */
+internal suspend fun <T> safeCall(
+    client: HttpClient,
+    url: String,
+    request: NetworkRequest,
+    deserialize: (body: String, headers: Map<String, List<String>>) -> T,
 ): Result<T, TransportError> {
     return try {
         val response: HttpResponse = client.request(url) {
@@ -61,8 +86,12 @@ internal suspend fun <T> safeCall(
         }
 
         when (val status = response.status.value) {
-            in 200..299 -> Result.Success(deserialize(response.bodyAsText()))
-            else -> Result.Failure(TransportError.Server(status, response.bodyAsText()))
+            in 200..299 -> Result.Success(
+                deserialize(response.bodyAsText(), response.headers.toHeadersMap())
+            )
+            else -> Result.Failure(
+                TransportError.Server(status, response.headers.toHeadersMap(), response.bodyAsText())
+            )
         }
     } catch (e: CancellationException) {
         throw e
@@ -80,3 +109,9 @@ internal suspend fun <T> safeCall(
         Result.Failure(TransportError.Unknown(e.message))
     }
 }
+
+/**
+ * Converts Ktor [Headers] to a multi-value map, preserving all values per name.
+ */
+private fun Headers.toHeadersMap(): Map<String, List<String>> =
+    entries().associate { (name, values) -> name to values }
