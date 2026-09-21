@@ -4,7 +4,7 @@ import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.result.fold
 import com.auth0.kmp.myaccount.error.MyAccountError
-import com.auth0.kmp.myaccount.response.ProblemDetailsResponse
+import com.auth0.kmp.myaccount.response.ApiErrorResponse
 import com.auth0.kmp.myaccount.response.toApiError
 import com.auth0.kmp.networking.transport.json
 
@@ -16,7 +16,7 @@ internal fun TransportError.toMyAccountError(): MyAccountError = when (this) {
     TransportError.Timeout -> MyAccountError.Network(this)
 
     is TransportError.Server -> body
-        ?.let { runCatching { json.decodeFromString<ProblemDetailsResponse>(it) }.getOrNull() }
+        ?.let { runCatching { json.decodeFromString<ApiErrorResponse>(it) }.getOrNull() }
         ?.toApiError()
         ?: MyAccountError.Unknown(this)
 

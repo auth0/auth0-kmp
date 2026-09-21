@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 @InternalAuth0Api
-public data class ProblemDetailsResponse(
+public data class ApiErrorResponse(
     @SerialName("type") val type: String,
     @SerialName("title") val title: String,
     @SerialName("detail") val detail: String,
@@ -26,7 +26,7 @@ public data class ValidationErrorResponse(
 )
 
 @InternalAuth0Api
-public fun ProblemDetailsResponse.toApiError(): MyAccountError.ApiError =
+public fun ApiErrorResponse.toApiError(): MyAccountError.ApiError =
     MyAccountError.ApiError(
         type = type,
         title = title,
