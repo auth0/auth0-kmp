@@ -17,8 +17,6 @@ import com.auth0.kmp.networking.networkClient
  * @param account the tenant/application coordinates requests are sent to.
  * @param accessToken the My Account API access token authorizing the requests.
  * @param networkClient the transport requests are sent over.
- * @param userAgent identifies the client library in the `Auth0-Client` header;
- *   defaults to this SDK's identity.
  */
 @OptIn(InternalAuth0Api::class)
 @InternalAuth0Api
@@ -26,7 +24,6 @@ public fun myAccountClient(
     account: Auth0Account,
     accessToken: String,
     networkClient: NetworkClient,
-    userAgent: UserAgent = Auth0UserAgent.default(),
 ): MyAccountClient =
     DefaultMyAccountClient(
         accessToken = accessToken,
@@ -52,7 +49,7 @@ public fun myAccountClient(
     userAgent: UserAgent = Auth0UserAgent.default(),
 ): MyAccountClient {
     val network = networkClient(account, userAgent)
-    val client = myAccountClient(account, accessToken, network, userAgent)
+    val client = myAccountClient(account, accessToken, network)
     return object : MyAccountClient by client {
         override fun close() {
             network.close()

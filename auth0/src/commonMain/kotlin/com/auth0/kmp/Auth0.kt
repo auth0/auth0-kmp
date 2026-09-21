@@ -96,7 +96,9 @@ public class Auth0 internal constructor(
      *
      * Unlike [webAuth] and [authentication], this returns a new client on every
      * call; it is not cached, since the access token differs per call. The
-     * returned client does not own the shared transport; release it via [close].
+     * returned client borrows the shared transport and does not own it: its own
+     * [MyAccountClient.close] is a no-op. Release the transport by closing this
+     * `Auth0` instance via [close].
      *
      * @param accessToken the My Account API access token authorizing the requests.
      */
@@ -105,7 +107,7 @@ public class Auth0 internal constructor(
     ): MyAccountClient =
         buildMyAccount(networkClient, accessToken)
 
-    /** Releases the shared network transport. Clients must not be used afterwards. */
+    /** Releases the shared network transport. Clients must not be used afterward. */
     override fun close() {
         networkClient.close()
     }

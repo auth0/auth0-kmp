@@ -11,9 +11,9 @@ public sealed interface MyAccountError : Auth0Error {
     /**
      * Auth0 received the request and rejected it with an error payload.
      *
-     * @param type a URI identifying the problem type, or `null` when absent.
+     * @param type a URI identifying the problem type.
      * @param title a short, human-readable summary of the problem.
-     * @param detail a human-readable explanation specific to this occurrence, or `null`.
+     * @param detail a human-readable explanation specific to this occurrence.
      * @param status the HTTP status code that carried the error.
      * @param validationErrors the per-field validation failures, empty when none.
      */

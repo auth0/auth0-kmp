@@ -16,15 +16,12 @@ import kotlin.time.Clock
  *
  * @param account the tenant/application coordinates requests are sent to.
  * @param networkClient the transport requests are sent over.
- * @param userAgent identifies the client library in the `Auth0-Client` header;
- *   defaults to this SDK's identity.
  */
 @OptIn(InternalAuth0Api::class)
 @InternalAuth0Api
 public fun authenticationClient(
     account: Auth0Account,
     networkClient: NetworkClient,
-    userAgent: UserAgent = Auth0UserAgent.default(),
 ): AuthenticationClient {
     val clock = Clock.System
     return DefaultAuthenticationClient(
@@ -53,7 +50,7 @@ public fun authenticationClient(
     userAgent: UserAgent = Auth0UserAgent.default(),
 ): AuthenticationClient {
     val network = networkClient(account, userAgent)
-    val client = authenticationClient(account, network, userAgent)
+    val client = authenticationClient(account, network)
     return object : AuthenticationClient by client {
         override fun close() {
             network.close()
