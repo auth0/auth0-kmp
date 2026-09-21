@@ -17,7 +17,7 @@ kotlin {
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
-            baseName = "Auth0Myaccount"
+            baseName = "Auth0MyAccount"
             isStatic = true
         }
     }
