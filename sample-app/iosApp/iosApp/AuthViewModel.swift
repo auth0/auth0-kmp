@@ -63,9 +63,33 @@ final class AuthViewModel {
         }
     }
 
+    // Drives the passwordless screen's "start" step only (sending the code). The
+    // "verify" step exchanges the code for tokens, so it drives the shared `State`
+    // like every other login, promoting to Welcome on success.
+    enum PasswordlessState: Equatable {
+        case idle
+        case sending
+        // The code was sent; the screen reveals the code entry + Verify button.
+        case codeSent
+        case failure(any Auth0Error)
+
+        static func == (lhs: PasswordlessState, rhs: PasswordlessState) -> Bool {
+            switch (lhs, rhs) {
+            case (.idle, .idle), (.sending, .sending), (.codeSent, .codeSent):
+                return true
+            case let (.failure(l), .failure(r)):
+                return (l as? NSObjectProtocol)?.isEqual(r) ?? false
+            default:
+                return false
+            }
+        }
+    }
+
     private(set) var state: State = .restoring
 
     private(set) var signupState: SignupState = .idle
+
+    private(set) var passwordlessState: PasswordlessState = .idle
 
     // Remembers the credentials entered on the sign-up screen so the confirmation
     // screen's "Log in" button can complete the sign-up → login hop without asking
@@ -299,6 +323,64 @@ final class AuthViewModel {
     func resetSignup() {
         signupState = .idle
         lastSignup = nil
+    }
+
+    // Step 1: sends a one-time code to the email. Succeeds with Unit (no tokens),
+    // so it drives its own PasswordlessState; .codeSent reveals the code field.
+    func passwordlessStart(email: String) async {
+        guard let client else { return }
+        passwordlessState = .sending
+        do {
+            let result = try await client.passwordlessWithEmail(
+                email: email,
+                type: PasswordlessType.code,
+                connection: "email",
+                options: defaultOptions()
+            )
+            switch onEnum(of: result) {
+            case .success:
+                passwordlessState = .codeSent
+            case .failure(let failure):
+                passwordlessState = (failure.error as? AuthenticationError).map(PasswordlessState.failure) ?? .idle
+            }
+        } catch {
+            passwordlessState = .idle
+        }
+    }
+
+    // Step 2: exchanges the code for credentials. Drives the shared `State` so a
+    // success flows through the normal success→Welcome navigation.
+    func passwordlessVerify(email: String, code: String) async {
+        guard let client else { return }
+        state = .loading
+        do {
+            let result = try await client.loginWithEmail(
+                email: email,
+                code: code,
+                realm: "email",
+                audience: audience,
+                scope: "openid profile email offline_access",
+                options: defaultOptions()
+            )
+            switch onEnum(of: result) {
+            case .success(let success):
+                if let credentials = success.data as? Credentials {
+                    loginMethod = .embedded
+                    await saveCredentials(credentials)
+                    state = .success(credentials)
+                } else {
+                    state = .idle
+                }
+            case .failure(let failure):
+                state = (failure.error as? AuthenticationError).map(State.failure) ?? .idle
+            }
+        } catch {
+            state = .idle
+        }
+    }
+
+    func resetPasswordless() {
+        passwordlessState = .idle
     }
 
     // Passkey sign-up. The SDK is HTTP-only for passkeys, so the ceremony (the
