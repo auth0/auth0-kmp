@@ -7,6 +7,8 @@ import com.auth0.kmp.authentication.model.PasskeyLoginChallenge
 import com.auth0.kmp.authentication.model.PasskeyRegistrationChallenge
 import com.auth0.kmp.authentication.model.PublicKeyCredentials
 import com.auth0.kmp.authentication.model.SignupProfile
+import com.auth0.kmp.authentication.passwordless.DefaultPasswordlessClient
+import com.auth0.kmp.authentication.passwordless.PasswordlessClient
 import com.auth0.kmp.authentication.request.PasskeyGrant
 import com.auth0.kmp.authentication.request.PasswordRealmGrant
 import com.auth0.kmp.authentication.response.DatabaseUserResponse
@@ -275,6 +277,13 @@ internal class DefaultAuthenticationClient(
         return tokenClient.fetchToken(grant, options.headers, options.retryPolicy)
             .foldToCredentials(idTokenValidator, validateIdToken = true)
     }
+
+    override fun passwordlessClient(): PasswordlessClient = DefaultPasswordlessClient(
+        clientId = clientId,
+        tokenClient = tokenClient,
+        idTokenValidator = idTokenValidator,
+        networkClient = networkClient,
+    )
 
     private inline fun jsonBody(
         options: RequestOptions,

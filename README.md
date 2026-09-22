@@ -308,8 +308,8 @@ val credentials = result.getOrNull()
 ### More examples
 
 The examples above cover the common path. For per-feature depth — organizations,
-ephemeral sessions, passkeys, custom credential stores, DPoP, retries, and the
-full error families — see [EXAMPLES.md](./EXAMPLES.md).
+ephemeral sessions, passwordless, passkeys, custom credential stores, DPoP,
+retries, and the full error families — see [EXAMPLES.md](./EXAMPLES.md).
 
 
 ## Modules

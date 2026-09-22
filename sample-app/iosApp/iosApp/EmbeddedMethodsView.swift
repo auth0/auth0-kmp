@@ -13,6 +13,7 @@ struct EmbeddedMethodsView: View {
     let onSignup: () -> Void
     let onPasskeySignup: () -> Void
     let onPasskeyLogin: () -> Void
+    let onPasswordless: () -> Void
 
     var body: some View {
         ScrollView {
@@ -42,6 +43,11 @@ struct EmbeddedMethodsView: View {
                     title: "Log in with passkey",
                     description: "Sign in with an existing passkey",
                     action: onPasskeyLogin
+                )
+                methodCard(
+                    title: "Passwordless (email)",
+                    description: "Get a one-time code by email and sign in",
+                    action: onPasswordless
                 )
             }
             .padding(.horizontal, Spacing.lg)
