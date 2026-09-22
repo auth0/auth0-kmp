@@ -7,6 +7,7 @@ import com.auth0.kmp.authentication.model.PasskeyLoginChallenge
 import com.auth0.kmp.authentication.model.PasskeyRegistrationChallenge
 import com.auth0.kmp.authentication.model.PublicKeyCredentials
 import com.auth0.kmp.authentication.model.SignupProfile
+import com.auth0.kmp.authentication.passwordless.PasswordlessClient
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.credentials.CredentialsManager
@@ -149,6 +150,8 @@ private class FakeAuthenticationClient : AuthenticationClient {
         scope: String,
         options: RequestOptions,
     ): Result<Credentials, AuthenticationError> = error("not used")
+
+    override fun passwordlessClient(): PasswordlessClient = error("not used")
 }
 
 private class FakeCredentialsManager : CredentialsManager {

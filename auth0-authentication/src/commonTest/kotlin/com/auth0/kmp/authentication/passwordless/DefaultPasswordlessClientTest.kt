@@ -113,6 +113,25 @@ private class RecordingNetworkClient(
         }
     }
 
+    override suspend fun <T> request(
+        request: NetworkRequest,
+        retryPolicy: RetryPolicy,
+        deserialize: (body: String, headers: Map<String, List<String>>) -> T,
+    ): Result<T, TransportError> {
+        callCount++
+        lastRequest = request
+        return when (outcome) {
+            is Result.Success -> try {
+                Result.Success(deserialize(outcome.data, emptyMap()))
+            } catch (e: SerializationException) {
+                Result.Failure(TransportError.Serialization(e.message ?: "deserialization failed"))
+            } catch (e: Throwable) {
+                Result.Failure(TransportError.Unknown(e.message))
+            }
+            is Result.Failure -> Result.Failure(outcome.error)
+        }
+    }
+
     override fun close() {}
 }
 
@@ -206,7 +225,7 @@ class DefaultPasswordlessClientTest {
     @Test
     fun passwordlessWithEmail_serverError_mapsToApiError() = runTest {
         val (client, _) = restClient(
-            Result.Failure(TransportError.Server(400, """{"error":"bad_request","error_description":"nope"}""")),
+            Result.Failure(TransportError.Server(400, emptyMap(), """{"error":"bad_request","error_description":"nope"}""")),
         )
 
         val result = client.passwordlessWithEmail(email = "a@b.com")
