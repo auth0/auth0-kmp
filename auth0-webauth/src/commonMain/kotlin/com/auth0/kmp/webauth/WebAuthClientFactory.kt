@@ -23,15 +23,12 @@ import kotlin.time.Clock
  *
  * @param account the tenant/application coordinates the login is performed against.
  * @param networkClient the transport requests are sent over.
- * @param userAgent identifies the client library in the `Auth0-Client` header;
- *   defaults to this SDK's identity.
  */
 @OptIn(InternalAuth0Api::class)
 @InternalAuth0Api
 public fun webAuthClient(
     account: Auth0Account,
     networkClient: NetworkClient,
-    userAgent: UserAgent = Auth0UserAgent.default(),
 ): WebAuthClient {
     val clock = Clock.System
     val collaborators = if (account.useDPoP) DPoPRegistry.Default.collaboratorsFor(account) else null
@@ -64,7 +61,7 @@ public fun webAuthClient(
     userAgent: UserAgent = Auth0UserAgent.default(),
 ): WebAuthClient {
     val network = networkClient(account, userAgent)
-    val client = webAuthClient(account, network, userAgent)
+    val client = webAuthClient(account, network)
     return object : WebAuthClient by client {
         override fun close() {
             network.close()

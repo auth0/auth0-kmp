@@ -28,11 +28,18 @@ private class FakeNetworkClient(
         request: NetworkRequest,
         retryPolicy: RetryPolicy,
         deserialize: (String) -> T,
+    ): Result<T, TransportError> =
+        request(request, retryPolicy) { body, _ -> deserialize(body) }
+
+    override suspend fun <T> request(
+        request: NetworkRequest,
+        retryPolicy: RetryPolicy,
+        deserialize: (body: String, headers: Map<String, List<String>>) -> T,
     ): Result<T, TransportError> {
         requestCount++
         lastRequest = request
         return when (val o = outcome) {
-            is Result.Success -> Result.Success(deserialize(o.data))
+            is Result.Success -> Result.Success(deserialize(o.data, emptyMap()))
             is Result.Failure -> o
         }
     }

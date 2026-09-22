@@ -50,6 +50,15 @@ val auth0 = Auth0(account)
   - [Multiple credential stores](#multiple-credential-stores)
   - [Custom storage](#custom-storage)
   - [Credentials Manager errors](#credentials-manager-errors)
+- [My Account API](#my-account-api-android--ios)
+  - [Enroll a passkey](#enroll-a-passkey)
+  - [Enroll an authenticator app (TOTP)](#enroll-an-authenticator-app-totp)
+  - [Enroll push notifications](#enroll-push-notifications)
+  - [Enroll email](#enroll-email)
+  - [Enroll phone](#enroll-phone)
+  - [Enroll a recovery code](#enroll-a-recovery-code)
+  - [Enroll a password](#enroll-a-password)
+  - [My Account API errors](#my-account-api-errors)
 - [DPoP](#dpop-android--ios)
 - [Networking](#networking-android--ios)
   - [Timeouts](#timeouts)
@@ -814,6 +823,219 @@ when (val result = credentialsManager.getCredentials()) {
 > When credentials cannot be decrypted (`CryptoFailed`) or a DPoP key is missing
 > or no longer matches the stored tokens, the manager clears the stored
 > credentials — the user must log in again.
+
+## My Account API (Android / iOS)
+
+The My Account API lets a signed-in user manage their own account — for example,
+enrolling a new passkey. It is authenticated with a dedicated access token issued
+for the `https://YOUR_DOMAIN/me` audience, **not** your app's credentials. Get
+one from the [Credentials Manager](#api-credentials) with
+`getApiCredentials(audience = "https://YOUR_DOMAIN/me", scope = "...")`, or with
+[`renew(...)`](#renew-credentials) if you are not using the manager. The token
+must carry the scopes each operation requires.
+
+```kotlin
+val myAccount = auth0.myAccount(apiCredentials.accessToken)
+```
+
+### Enroll a passkey
+
+Enrollment is split so your app can run the platform WebAuthn ceremony: the SDK
+fetches a challenge, your app creates the passkey, then the SDK verifies it.
+
+> [!NOTE]
+> Passkeys must be enabled on your Auth0 tenant. On Android this requires
+> minSdk 28 and the AndroidX Credential Manager; on iOS, the
+> `AuthenticationServices` framework. Both operations require the
+> `create:me:authentication_methods` scope on the access token.
+
+```kotlin
+// 1. Ask Auth0 for an enrollment challenge.
+when (val result = auth0.myAccount(accessToken).passkeyEnrollmentChallenge()) {
+    is Result.Success -> {
+        val challenge = result.data
+        // 2. Run the platform passkey-creation ceremony with
+        //    challenge.authParamsPublicKey, then verify the resulting credential
+        //    to complete the enrollment.
+        auth0.myAccount(accessToken).verifyPasskeyEnrollment(
+            credential = publicKeyCredentials, // from the platform ceremony
+            challenge = challenge,
+        )
+    }
+    is Result.Failure -> { /* result.error is a MyAccountError */ }
+}
+```
+
+You can scope the challenge to a specific identity or connection, and pass extra
+per-request options:
+
+```kotlin
+auth0.myAccount(accessToken).passkeyEnrollmentChallenge(
+    userIdentityId = "auth0|abc123",
+    connection = "Username-Password-Authentication",
+)
+```
+
+On success `verifyPasskeyEnrollment` returns a `PasskeyAuthenticationMethod`
+describing the enrolled passkey — its `id`, `credential`, `createdAt`, and the
+`relyingPartyId` it is bound to. See the sample apps for complete,
+platform-specific ceremony code.
+
+### Enroll an authenticator app (TOTP)
+
+TOTP, push, email, phone, recovery code, and password enrollments share the same
+two-step shape: request a challenge, then verify it. The challenge carries the
+`authenticationMethodId` and `authSession` you hand back to the matching
+`verify…` call.
+
+> [!NOTE]
+> Every enrollment needs the `create:me:authentication_methods` scope on the
+> access token, and the factor must be enabled for your tenant.
+
+```kotlin
+when (val result = myAccount.totpEnrollmentChallenge()) {
+    is Result.Success -> {
+        val challenge = result.data
+        // Show challenge.barcodeUri as a QR code, or challenge.manualInputCode for
+        // manual entry, then verify the code from the user's authenticator app.
+        myAccount.verifyTotpEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+            otpCode = "123456",
+        )
+    }
+    is Result.Failure -> { /* result.error is a MyAccountError */ }
+}
+```
+
+### Enroll push notifications
+
+The challenge's `barcodeUri` is a QR code the user scans in Auth0 Guardian. Once
+they approve the prompt, verify the enrollment.
+
+```kotlin
+when (val result = myAccount.pushNotificationEnrollmentChallenge()) {
+    is Result.Success -> {
+        val challenge = result.data
+        // Show challenge.barcodeUri as a QR code for the Guardian app.
+        myAccount.verifyPushNotificationEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+        )
+    }
+    is Result.Failure -> { /* handle */ }
+}
+```
+
+### Enroll email
+
+Sends a one-time code to the address; verify the code the user receives.
+
+```kotlin
+when (val result = myAccount.emailEnrollmentChallenge(email = "user@example.com")) {
+    is Result.Success -> {
+        val challenge = result.data
+        myAccount.verifyEmailEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+            otpCode = "123456",
+        )
+    }
+    is Result.Failure -> { /* handle */ }
+}
+```
+
+### Enroll phone
+
+Sends a one-time code over SMS or voice — choose the channel with
+`preferredAuthenticationMethod`.
+
+```kotlin
+import com.auth0.kmp.myaccount.model.PhoneAuthenticationMethodType
+
+when (
+    val result = myAccount.phoneEnrollmentChallenge(
+        phoneNumber = "+15551234567",
+        preferredAuthenticationMethod = PhoneAuthenticationMethodType.SMS,
+    )
+) {
+    is Result.Success -> {
+        val challenge = result.data
+        myAccount.verifyPhoneEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+            otpCode = "123456",
+        )
+    }
+    is Result.Failure -> { /* handle */ }
+}
+```
+
+### Enroll a recovery code
+
+The challenge returns the `recoveryCode`. Show it once and require the user to
+save it, then verify to activate it.
+
+```kotlin
+when (val result = myAccount.recoveryCodeEnrollmentChallenge()) {
+    is Result.Success -> {
+        val challenge = result.data
+        // Display challenge.recoveryCode and confirm the user has stored it —
+        // it is shown only once.
+        myAccount.verifyRecoveryCodeEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+        )
+    }
+    is Result.Failure -> { /* handle */ }
+}
+```
+
+### Enroll a password
+
+The challenge returns the tenant's `passwordPolicy`, so you can validate the new
+password before submitting it. Both `userIdentityId` and `connection` are
+optional.
+
+```kotlin
+when (
+    val result = myAccount.passwordEnrollmentChallenge(
+        userIdentityId = "auth0|abc123",
+        connection = "Username-Password-Authentication",
+    )
+) {
+    is Result.Success -> {
+        val challenge = result.data
+        // Validate the new password against challenge.passwordPolicy first.
+        myAccount.verifyPasswordEnrollment(
+            authenticationMethodId = challenge.authenticationMethodId,
+            authSession = challenge.authSession,
+            newPassword = "a-new-secret-password",
+        )
+    }
+    is Result.Failure -> { /* handle */ }
+}
+```
+
+### My Account API errors
+
+```kotlin
+import com.auth0.kmp.myaccount.error.MyAccountError
+
+when (val result = auth0.myAccount(accessToken).passkeyEnrollmentChallenge()) {
+    is Result.Success -> useChallenge(result.data)
+    is Result.Failure -> when (val error = result.error) {
+        is MyAccountError.ApiError -> log(error.title, error.detail, error.validationErrors)
+        is MyAccountError.InvalidInput -> log(error.message)
+        is MyAccountError.Network -> retryLater(error.cause)
+        is MyAccountError.Unknown -> log(error.cause)
+    }
+}
+```
+
+`ApiError` carries the [Problem Details](https://datatracker.ietf.org/doc/html/rfc9457)
+returned by the API — `type`, `title`, `detail`, `status`, and any per-field
+`validationErrors`.
 
 ## DPoP (Android / iOS)
 

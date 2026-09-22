@@ -21,6 +21,12 @@ private class FakeNetworkClient : NetworkClient {
         deserialize: (String) -> T,
     ): Result<T, TransportError> = error("not used")
 
+    override suspend fun <T> request(
+        request: NetworkRequest,
+        retryPolicy: RetryPolicy,
+        deserialize: (body: String, headers: Map<String, List<String>>) -> T,
+    ): Result<T, TransportError> = error("not used")
+
     override fun close() {
         closed = true
     }

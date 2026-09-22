@@ -22,6 +22,15 @@ internal class DefaultNetworkClient(
         return withRetry(retryPolicy) { safeCall(client, url, request, deserialize) }
     }
 
+    override suspend fun <T> request(
+        request: NetworkRequest,
+        retryPolicy: RetryPolicy,
+        deserialize: (body: String, headers: Map<String, List<String>>) -> T,
+    ): Result<T, TransportError> {
+        val url = resolver.resolve(request.path)
+        return withRetry(retryPolicy) { safeCall(client, url, request, deserialize) }
+    }
+
     override fun close() {
         client.close()
     }

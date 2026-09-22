@@ -70,13 +70,13 @@ class WithRetryTest {
             listOf(
                 Result.Failure(TransportError.Timeout),
                 Result.Failure(TransportError.Timeout),
-                Result.Failure(TransportError.Server(401, "nope")),
+                Result.Failure(TransportError.Server(401, emptyMap(), "nope")),
             )
         )
 
         val result = withRetry(policy(maxAttempts = 3), recordingDelay) { block.invoke() }
 
-        assertEquals(Result.Failure(TransportError.Server(401, "nope")), result)
+        assertEquals(Result.Failure(TransportError.Server(401, emptyMap(), "nope")), result)
         assertEquals(3, block.calls)
         assertEquals(2, recordedDelays.size)
     }
@@ -85,7 +85,7 @@ class WithRetryTest {
     fun stopsImmediately_whenRetryOnReturnsFalse() = runTest {
         val block = ScriptedBlock(
             listOf(
-                Result.Failure(TransportError.Server(403, "nope")),
+                Result.Failure(TransportError.Server(403, emptyMap(), "nope")),
                 Result.Success("unreached"),
             )
         )
@@ -95,7 +95,7 @@ class WithRetryTest {
             recordingDelay,
         ) { block.invoke() }
 
-        assertEquals(Result.Failure(TransportError.Server(403, "nope")), result)
+        assertEquals(Result.Failure(TransportError.Server(403, emptyMap(), "nope")), result)
         assertEquals(1, block.calls)
         assertTrue(recordedDelays.isEmpty())
     }

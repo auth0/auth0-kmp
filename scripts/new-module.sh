@@ -3,7 +3,14 @@
 # new-module.sh — scaffold a new published Auth0 KMP feature module.
 #
 # Usage:  ./scripts/new-module.sh <name>
-# Example: ./scripts/new-module.sh mfa   ->  module :auth0-mfa
+# Example: ./scripts/new-module.sh mfa          ->  :auth0-mfa        (framework Auth0Mfa)
+#          ./scripts/new-module.sh my-account   ->  :auth0-myaccount  (framework Auth0MyAccount)
+#
+# <name> is one or more lowercase words separated by '-'. Dashes mark word
+# boundaries for the PascalCase iOS framework baseName only; they are stripped
+# for the module dir / package / namespace (which stay concatenated lowercase,
+# e.g. auth0-myaccount / com.auth0.kmp.myaccount). Pass compound names dash-
+# separated (my-account, not myaccount) so the framework casing is correct.
 #
 # What it does (idempotent — safe to re-run):
 #   1. creates auth0-<name>/build.gradle.kts  (minimal KMP + api(auth0-core) + auth0.publish)
@@ -29,25 +36,36 @@ UMBRELLA="$ROOT/auth0/build.gradle.kts"
 
 # --- validate argument -------------------------------------------------------
 if [ $# -ne 1 ]; then
-    echo "usage: $0 <name>   (e.g. $0 mfa  ->  :auth0-mfa)" >&2
+    echo "usage: $0 <name>   (e.g. $0 mfa  ->  :auth0-mfa ; $0 my-account  ->  :auth0-myaccount)" >&2
     exit 2
 fi
 
-NAME="$1"
-if ! [[ "$NAME" =~ ^[a-z][a-z0-9]*$ ]]; then
-    echo "ERROR: <name> must be a single lowercase word ([a-z][a-z0-9]*): got '$NAME'" >&2
-    echo "       it becomes the package segment com.auth0.kmp.$NAME, which can't contain '-'." >&2
+INPUT="$1"
+if ! [[ "$INPUT" =~ ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ ]]; then
+    echo "ERROR: <name> must be lowercase words separated by '-' ([a-z][a-z0-9]*(-[a-z0-9]+)*): got '$INPUT'" >&2
+    echo "       e.g. 'mfa' or 'my-account'." >&2
     exit 2
 fi
+
+# Dashes mark word boundaries for the PascalCase framework baseName only; the
+# module dir / package / namespace strip them and stay concatenated lowercase,
+# matching the existing modules (auth0-myaccount, com.auth0.kmp.myaccount).
+NAME="${INPUT//-/}"
 
 MODULE="auth0-$NAME"                       # gradle path segment / dir name
 MODULE_DIR="$ROOT/$MODULE"
 NAMESPACE="com.auth0.kmp.$NAME"
 PKG_DIR="$MODULE_DIR/src/commonMain/kotlin/com/auth0/kmp/$NAME"
 
-# baseName = Auth0 + Capitalized name  (portable — no GNU sed \U)
-FIRST="$(printf '%s' "${NAME:0:1}" | tr '[:lower:]' '[:upper:]')"
-BASENAME="Auth0${FIRST}${NAME:1}"
+# baseName = Auth0 + PascalCase of each dash-separated word (portable — no GNU sed \U).
+# e.g. my-account -> Auth0MyAccount ; mfa -> Auth0Mfa
+BASENAME="Auth0"
+IFS='-' read -ra WORDS <<< "$INPUT"
+for WORD in "${WORDS[@]}"; do
+    FIRST="$(printf '%s' "${WORD:0:1}" | tr '[:lower:]' '[:upper:]')"
+    BASENAME="${BASENAME}${FIRST}${WORD:1}"
+done
+unset WORDS WORD FIRST
 
 # --- preflight guards (abort before writing anything) ------------------------
 if [ -e "$MODULE_DIR" ]; then

@@ -25,6 +25,7 @@ kotlin {
             export(project(":auth0-authentication"))
             export(project(":auth0-webauth"))
             export(project(":auth0-credentials"))
+            export(project(":auth0-myaccount"))
         }
     }
 
@@ -46,6 +47,7 @@ kotlin {
             api(project(":auth0-authentication"))
             api(project(":auth0-webauth"))
             api(project(":auth0-credentials"))
+            api(project(":auth0-myaccount"))
         }
 
         commonTest.dependencies {
