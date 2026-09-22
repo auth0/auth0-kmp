@@ -4,9 +4,9 @@ import com.auth0.kmp.authentication.error.AuthenticationError
 import com.auth0.kmp.authentication.model.DatabaseUser
 import com.auth0.kmp.authentication.model.PasskeyLoginChallenge
 import com.auth0.kmp.authentication.model.PasskeyRegistrationChallenge
-import com.auth0.kmp.authentication.model.PasswordlessType
 import com.auth0.kmp.authentication.model.PublicKeyCredentials
 import com.auth0.kmp.authentication.model.SignupProfile
+import com.auth0.kmp.authentication.passwordless.PasswordlessClient
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.model.SsoCredentials
@@ -197,92 +197,17 @@ public interface AuthenticationClient : AutoCloseable {
     ): Result<Credentials, AuthenticationError>
 
     /**
-     * Starts a passwordless flow that delivers a one-time code or link to an
-     * email address.
+     * Returns a [PasswordlessClient] for performing passwordless authentication flows.
      *
-     * On success, complete the flow with [loginWithEmail] (for [PasswordlessType.CODE])
-     * once the user provides the code they received.
+     * ## Usage
      *
-     * @param email the email address to send the code or link to.
-     * @param type how the code or link is delivered.
-     * @param connection the name of the passwordless email connection.
-     * @param options per-call transport options (extra parameters, headers, retry policy).
-     * @return [Result.Success] on success, or [Result.Failure] with the
-     *   [AuthenticationError] that occurred.
+     * ```kotlin
+     * val passwordless = authClient.passwordlessClient()
+     * ```
+     *
+     * @return a new [PasswordlessClient] instance bound to this client's Auth0 account.
      */
-    public suspend fun passwordlessWithEmail(
-        email: String,
-        type: PasswordlessType = PasswordlessType.CODE,
-        connection: String = "email",
-        options: RequestOptions = RequestOptions(),
-    ): Result<Unit, AuthenticationError>
-
-    /**
-     * Starts a passwordless flow that delivers a one-time code or link to a
-     * phone number over SMS.
-     *
-     * On success, complete the flow with [loginWithSMS] (for [PasswordlessType.CODE])
-     * once the user provides the code they received.
-     *
-     * @param phoneNumber the phone number, in E.164 format, to send the code or link to.
-     * @param type how the code or link is delivered.
-     * @param connection the name of the passwordless SMS connection.
-     * @param options per-call transport options (extra parameters, headers, retry policy).
-     * @return [Result.Success] on success, or [Result.Failure] with the
-     *   [AuthenticationError] that occurred.
-     */
-    public suspend fun passwordlessWithSMS(
-        phoneNumber: String,
-        type: PasswordlessType = PasswordlessType.CODE,
-        connection: String = "sms",
-        options: RequestOptions = RequestOptions(),
-    ): Result<Unit, AuthenticationError>
-
-    /**
-     * Completes an email passwordless flow by exchanging the one-time code for
-     * credentials.
-     *
-     * @param email the email address the code was sent to.
-     * @param code the one-time code the user received.
-     * @param realm the name of the passwordless email connection to authenticate against.
-     * @param audience the unique identifier of the API to request access to, or
-     *   `null` to omit it.
-     * @param scope the space-separated scopes to request.
-     * @param options per-call transport options (extra parameters, headers, retry policy).
-     * @return [Result.Success] with the issued [Credentials], or [Result.Failure]
-     *   with the [AuthenticationError] that occurred.
-     */
-    public suspend fun loginWithEmail(
-        email: String,
-        code: String,
-        realm: String = "email",
-        audience: String? = null,
-        scope: String = "openid profile email",
-        options: RequestOptions = RequestOptions(),
-    ): Result<Credentials, AuthenticationError>
-
-    /**
-     * Completes an SMS passwordless flow by exchanging the one-time code for
-     * credentials.
-     *
-     * @param phoneNumber the phone number, in E.164 format, the code was sent to.
-     * @param code the one-time code the user received.
-     * @param realm the name of the passwordless SMS connection to authenticate against.
-     * @param audience the unique identifier of the API to request access to, or
-     *   `null` to omit it.
-     * @param scope the space-separated scopes to request.
-     * @param options per-call transport options (extra parameters, headers, retry policy).
-     * @return [Result.Success] with the issued [Credentials], or [Result.Failure]
-     *   with the [AuthenticationError] that occurred.
-     */
-    public suspend fun loginWithSMS(
-        phoneNumber: String,
-        code: String,
-        realm: String = "sms",
-        audience: String? = null,
-        scope: String = "openid profile email",
-        options: RequestOptions = RequestOptions(),
-    ): Result<Credentials, AuthenticationError>
+    public fun passwordlessClient(): PasswordlessClient
 
     /**
      * Releases the network transport backing this client.

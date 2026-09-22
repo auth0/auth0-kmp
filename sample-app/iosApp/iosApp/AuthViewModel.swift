@@ -331,7 +331,7 @@ final class AuthViewModel {
         guard let client else { return }
         passwordlessState = .sending
         do {
-            let result = try await client.passwordlessWithEmail(
+            let result = try await client.passwordlessClient().passwordlessWithEmail(
                 email: email,
                 type: PasswordlessType.code,
                 connection: "email",
@@ -354,7 +354,7 @@ final class AuthViewModel {
         guard let client else { return }
         state = .loading
         do {
-            let result = try await client.loginWithEmail(
+            let result = try await client.passwordlessClient().loginWithEmail(
                 email: email,
                 code: code,
                 realm: "email",

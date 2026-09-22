@@ -404,25 +404,28 @@ auth0.authentication.revoke(refreshToken = credentials.refreshToken!!)
 
 ### Passwordless
 
-Sign a user in without a password by sending them a one-time code, then
-exchanging that code for credentials. The flow is two steps: start it with
-[`passwordlessWithEmail`](#passwordless) or `passwordlessWithSMS`, then complete
-it with [`loginWithEmail`](#passwordless) or `loginWithSMS` once the user enters
-the code they received.
+All passwordless operations are grouped on a dedicated client obtained via
+`passwordlessClient()`. Two flows are supported:
 
 > [!IMPORTANT]
 > Passwordless requires the **Passwordless OTP** grant type to be enabled on your
-> Auth0 application, and the corresponding `email` or `sms` connection to be
-> enabled on your tenant.
+> Auth0 application, and the corresponding connection to be enabled on your tenant.
+
+#### Classic flow (email / SMS connection)
+
+Send a one-time code via an Auth0 email or SMS passwordless connection, then
+exchange it for credentials.
 
 **Email:**
 
 ```kotlin
-// 1. Send a one-time code to the user's email. Succeeds with Unit.
-auth0.authentication.passwordlessWithEmail(email = "user@example.com")
+val passwordless = auth0.authentication.passwordlessClient()
 
-// 2. Exchange the code the user received for credentials.
-val result = auth0.authentication.loginWithEmail(
+// 1. Send a one-time code to the user's email. Succeeds with Unit.
+passwordless.passwordlessWithEmail(email = "user@example.com")
+
+// 2. Exchange the code for credentials.
+val result = passwordless.loginWithEmail(
     email = "user@example.com",
     code = "123456",
 )
@@ -431,20 +434,66 @@ val result = auth0.authentication.loginWithEmail(
 **SMS:**
 
 ```kotlin
-// 1. Send a one-time code over SMS. The phone number must be in E.164 format.
-auth0.authentication.passwordlessWithSMS(phoneNumber = "+15551234567")
+val passwordless = auth0.authentication.passwordlessClient()
 
-// 2. Exchange the code the user received for credentials.
-val result = auth0.authentication.loginWithSMS(
+// 1. Send a one-time code over SMS. Phone number must be in E.164 format.
+passwordless.passwordlessWithSMS(phoneNumber = "+15551234567")
+
+// 2. Exchange the code for credentials.
+val result = passwordless.loginWithPhoneNumber(
     phoneNumber = "+15551234567",
     code = "123456",
 )
 ```
 
-By default the code is delivered as a `code` (`PasswordlessType.CODE`) over the
-`email`/`sms` connections. Pass a different `type` to send a magic `link`
-instead, or a custom `connection` name. The `loginWith*` calls also accept
-`audience`, `scope`, and a `RequestOptions`.
+By default the code is delivered as `PasswordlessType.CODE` over the `email`/`sms`
+connections. Pass a different `type` to send a magic `link` instead, or a custom
+`connection` name. The `loginWith*` calls also accept `audience`, `scope`, and
+`RequestOptions`.
+
+#### DB-connection OTP flow (Early Access)
+
+A challenge-based variant that works against a database connection with `email_otp`
+or `phone_otp` enabled. Requires Auth0 support to enable it on your tenant.
+
+**Email:**
+
+```kotlin
+val passwordless = auth0.authentication.passwordlessClient()
+
+// 1. Request a challenge — Auth0 emails a code and returns an auth_session token.
+val challengeResult = passwordless.challengeWithEmail(
+    email = "user@example.com",
+    connection = "Username-Password-Authentication",
+)
+val challenge = (challengeResult as Result.Success).data
+
+// 2. Exchange the challenge + code the user received for credentials.
+val result = passwordless.loginWithOTP(
+    challenge = challenge,
+    otp = "123456",
+)
+```
+
+**Phone (SMS / voice):**
+
+```kotlin
+val passwordless = auth0.authentication.passwordlessClient()
+
+// 1. Request a challenge via SMS (or DeliveryMethod.VOICE for a call).
+val challengeResult = passwordless.challengeWithPhoneNumber(
+    phoneNumber = "+15551234567",
+    connection = "Username-Password-Authentication",
+    deliveryMethod = DeliveryMethod.TEXT,
+)
+val challenge = (challengeResult as Result.Success).data
+
+// 2. Exchange the challenge + code for credentials.
+val result = passwordless.loginWithOTP(
+    challenge = challenge,
+    otp = "123456",
+)
+```
 
 ### Passkeys
 

@@ -207,7 +207,7 @@ class AuthViewModel(domain: String, clientId: String) : ViewModel() {
         val client = client ?: return
         _passwordlessState.value = PasswordlessUiState.Sending
         viewModelScope.launch {
-            _passwordlessState.value = when (val result = client.passwordlessWithEmail(email = email)) {
+            _passwordlessState.value = when (val result = client.passwordlessClient().passwordlessWithEmail(email = email)) {
                 is Result.Success -> PasswordlessUiState.CodeSent
                 is Result.Failure -> PasswordlessUiState.Failure(result.error)
             }
@@ -220,7 +220,7 @@ class AuthViewModel(domain: String, clientId: String) : ViewModel() {
         val client = client ?: return
         _state.value = LoginUiState.Loading
         viewModelScope.launch {
-            val result = client.loginWithEmail(
+            val result = client.passwordlessClient().loginWithEmail(
                 email = email,
                 code = code,
                 audience = audience,
