@@ -42,6 +42,7 @@ implementation("com.auth0.kmp:auth0-core:1.0.0-beta.1")
 implementation("com.auth0.kmp:auth0-authentication:1.0.0-beta.1")
 implementation("com.auth0.kmp:auth0-webauth:1.0.0-beta.1")
 implementation("com.auth0.kmp:auth0-credentials:1.0.0-beta.1")
+implementation("com.auth0.kmp:auth0-myaccount:1.0.0-beta.1")
 ```
 
 ### Configure Auth0
