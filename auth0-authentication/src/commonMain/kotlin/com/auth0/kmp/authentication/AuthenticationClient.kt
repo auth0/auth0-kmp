@@ -6,6 +6,7 @@ import com.auth0.kmp.authentication.model.PasskeyLoginChallenge
 import com.auth0.kmp.authentication.model.PasskeyRegistrationChallenge
 import com.auth0.kmp.authentication.model.PublicKeyCredentials
 import com.auth0.kmp.authentication.model.SignupProfile
+import com.auth0.kmp.authentication.passwordless.PasswordlessClient
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.model.SsoCredentials
@@ -194,6 +195,19 @@ public interface AuthenticationClient : AutoCloseable {
         scope: String = "openid profile email offline_access",
         options: RequestOptions = RequestOptions(),
     ): Result<Credentials, AuthenticationError>
+
+    /**
+     * Returns a [PasswordlessClient] for performing passwordless authentication flows.
+     *
+     * ## Usage
+     *
+     * ```kotlin
+     * val passwordless = authClient.passwordlessClient()
+     * ```
+     *
+     * @return a new [PasswordlessClient] instance bound to this client's Auth0 account.
+     */
+    public fun passwordlessClient(): PasswordlessClient
 
     /**
      * Releases the network transport backing this client.

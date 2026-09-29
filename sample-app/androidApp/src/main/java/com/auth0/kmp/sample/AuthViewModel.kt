@@ -46,6 +46,17 @@ sealed interface SignupUiState {
     data class Failure(val error: Auth0Error) : SignupUiState
 }
 
+// Drives the passwordless screen's "start" step only (sending the one-time code).
+// The "verify" step exchanges the code for tokens, so it drives the shared
+// LoginUiState like every other login, promoting to Welcome on success.
+sealed interface PasswordlessUiState {
+    data object Idle : PasswordlessUiState
+    data object Sending : PasswordlessUiState
+    // The code was sent; the screen now reveals the code entry + Verify button.
+    data object CodeSent : PasswordlessUiState
+    data class Failure(val error: Auth0Error) : PasswordlessUiState
+}
+
 private enum class LoginMethod { Embedded, WebAuth, Passkey }
 
 // Wraps a non-Auth0 failure (a cancelled/failed passkey ceremony) as an Auth0Error
@@ -185,6 +196,50 @@ class AuthViewModel(domain: String, clientId: String) : ViewModel() {
     fun resetSignup() {
         _signupState.value = SignupUiState.Idle
         lastSignup = null
+    }
+
+    private val _passwordlessState = MutableStateFlow<PasswordlessUiState>(PasswordlessUiState.Idle)
+    val passwordlessState: StateFlow<PasswordlessUiState> = _passwordlessState.asStateFlow()
+
+    // Step 1: sends a one-time code to the email. Succeeds with Unit (no tokens),
+    // so it drives its own PasswordlessUiState; CodeSent reveals the code field.
+    fun passwordlessStart(email: String) {
+        val client = client ?: return
+        _passwordlessState.value = PasswordlessUiState.Sending
+        viewModelScope.launch {
+            _passwordlessState.value = when (val result = client.passwordlessClient().passwordlessWithEmail(email = email)) {
+                is Result.Success -> PasswordlessUiState.CodeSent
+                is Result.Failure -> PasswordlessUiState.Failure(result.error)
+            }
+        }
+    }
+
+    // Step 2: exchanges the code for credentials. Drives the shared LoginUiState so
+    // success navigates to Welcome like any other login.
+    fun passwordlessVerify(email: String, code: String) {
+        val client = client ?: return
+        _state.value = LoginUiState.Loading
+        viewModelScope.launch {
+            val result = client.passwordlessClient().loginWithEmail(
+                email = email,
+                code = code,
+                audience = audience,
+                scope = "openid profile email offline_access",
+            )
+            _state.value = when (result) {
+                is Result.Success -> {
+                    loginMethod = LoginMethod.Embedded
+                    credentialsManager?.saveCredentials(result.data)
+                    LoginUiState.Success(result.data)
+                }
+
+                is Result.Failure -> LoginUiState.Failure(result.error)
+            }
+        }
+    }
+
+    fun resetPasswordless() {
+        _passwordlessState.value = PasswordlessUiState.Idle
     }
 
     // Registers a passkey, then mints tokens by sending the registration credential

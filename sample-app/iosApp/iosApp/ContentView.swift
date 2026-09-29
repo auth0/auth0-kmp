@@ -57,7 +57,11 @@ private struct AuthFlowView: View {
                                 path.append(.signup)
                             },
                             onPasskeySignup: { path.append(.passkeySignup) },
-                            onPasskeyLogin: { path.append(.passkeyLogin) }
+                            onPasskeyLogin: { path.append(.passkeyLogin) },
+                            onPasswordless: {
+                                viewModel.resetPasswordless()
+                                path.append(.passwordless)
+                            }
                         )
                     case .embeddedLogin:
                         EmbeddedLoginView(viewModel: viewModel, isConfigured: viewModel.isConfigured)
@@ -69,6 +73,8 @@ private struct AuthFlowView: View {
                         PasskeySignupView(viewModel: viewModel, isConfigured: viewModel.isConfigured)
                     case .passkeyLogin:
                         PasskeyLoginView(viewModel: viewModel, isConfigured: viewModel.isConfigured)
+                    case .passwordless:
+                        PasswordlessView(viewModel: viewModel, isConfigured: viewModel.isConfigured)
                     case .welcome:
                         WelcomeView(viewModel: viewModel)
                     }

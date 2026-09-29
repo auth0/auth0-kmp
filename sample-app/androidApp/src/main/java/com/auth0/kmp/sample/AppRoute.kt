@@ -36,4 +36,7 @@ object PasskeySignup
 object PasskeyLogin
 
 @Serializable
+object Passwordless
+
+@Serializable
 object Welcome
