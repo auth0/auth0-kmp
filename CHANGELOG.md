@@ -1,5 +1,13 @@
 # Change Log
 
+## [1.0.0-beta.1](https://github.com/auth0/auth0-kmp/tree/1.0.0-beta.1) (2026-09-29)
+[Full Changelog](https://github.com/auth0/auth0-kmp/compare/1.0.0-beta.0...1.0.0-beta.1)
+
+**Added**
+- feat: Add support for the My Account API (SDK-11153) [\#11](https://github.com/auth0/auth0-kmp/pull/11) ([pmathew92](https://github.com/pmathew92))
+- Add Native-to-Web SSO (session-transfer token) support (SDK-11174) [\#10](https://github.com/auth0/auth0-kmp/pull/10) ([pmathew92](https://github.com/pmathew92))
+- feat: Add Multi-Resource Refresh Token (MRRT) support (SDK-11173) [\#8](https://github.com/auth0/auth0-kmp/pull/8) ([pmathew92](https://github.com/pmathew92))
+
 ## [1.0.0-beta.0](https://github.com/auth0/auth0-kmp/tree/1.0.0-beta.0) (2026-08-13)
 
 First beta release of the Auth0 SDK for Kotlin Multiplatform, providing a single
