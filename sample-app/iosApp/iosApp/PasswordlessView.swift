@@ -130,28 +130,34 @@ struct PasswordlessView: View {
     private var statusView: some View {
         // Start-step failures render from passwordlessState; verify-step failures
         // come through the shared state. Verify success navigates away to Welcome.
-        if case .failure(let error) = viewModel.passwordlessState, let authError = error as? AuthenticationError {
-            Text(message(for: authError)).foregroundStyle(.red)
+        if case .failure(let error) = viewModel.passwordlessState {
+            Text(message(for: error)).foregroundStyle(.red)
         } else if codeSent {
             Text("Code sent — check your inbox.").foregroundStyle(Color.brandPrimary)
         }
-        if case .failure(let error) = viewModel.state, let authError = error as? AuthenticationError {
-            Text(message(for: authError)).foregroundStyle(.red)
+        if case .failure(let error) = viewModel.state {
+            Text(message(for: error)).foregroundStyle(.red)
         }
     }
 
-    private func message(for error: AuthenticationError) -> String {
-        switch onEnum(of: error) {
-        case .apiError(let e):
-            return "API error [\(e.code)]: \(e.errorDescription)"
-        case .invalidInput(let e):
-            return "Invalid input: \(e.message)"
-        case .network:
-            return "Network error"
-        case .idTokenValidation:
-            return "ID token validation failed"
-        case .unknown:
-            return "Unknown error"
+    private func message(for error: any Auth0Error) -> String {
+        if let authError = error as? AuthenticationError {
+            switch onEnum(of: authError) {
+            case .apiError(let e):
+                return "API error [\(e.code)]: \(e.errorDescription)"
+            case .invalidInput(let e):
+                return "Invalid input: \(e.message)"
+            case .network:
+                return "Network error"
+            case .idTokenValidation:
+                return "ID token validation failed"
+            case .unknown:
+                return "Unknown error"
+            }
         }
+        if let generic = error as? GenericAuth0Error {
+            return generic.message
+        }
+        return "Something went wrong. Please try again."
     }
 }

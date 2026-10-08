@@ -7,6 +7,14 @@
 import Foundation
 import Auth0
 
+/// Wraps a non-`AuthenticationError` outcome (a transport/bridging error, or an
+/// unexpected success payload) so every broken path can surface through a
+/// `.failure` state instead of silently resetting to `.idle`.
+final class GenericAuth0Error: Auth0Error, Error {
+    let message: String
+    init(_ message: String) { self.message = message }
+}
+
 @MainActor
 @Observable
 final class AuthViewModel {
@@ -78,7 +86,9 @@ final class AuthViewModel {
             case (.idle, .idle), (.sending, .sending), (.codeSent, .codeSent):
                 return true
             case let (.failure(l), .failure(r)):
-                return (l as? NSObjectProtocol)?.isEqual(r) ?? false
+                // Auth0Error is a bridged protocol with no reliable identity, so
+                // compare by described value to avoid spurious SwiftUI re-renders.
+                return String(describing: l) == String(describing: r)
             default:
                 return false
             }
@@ -331,7 +341,7 @@ final class AuthViewModel {
         guard let client else { return }
         passwordlessState = .sending
         do {
-            let result = try await client.passwordlessClient().passwordlessWithEmail(
+            let result = try await client.passwordlessClient().startWithEmail(
                 email: email,
                 type: PasswordlessType.code,
                 connection: "email",
@@ -341,10 +351,10 @@ final class AuthViewModel {
             case .success:
                 passwordlessState = .codeSent
             case .failure(let failure):
-                passwordlessState = (failure.error as? AuthenticationError).map(PasswordlessState.failure) ?? .idle
+                passwordlessState = .failure(asAuth0Error(failure.error))
             }
         } catch {
-            passwordlessState = .idle
+            passwordlessState = .failure(asAuth0Error(error))
         }
     }
 
@@ -357,7 +367,7 @@ final class AuthViewModel {
             let result = try await client.passwordlessClient().loginWithEmail(
                 email: email,
                 code: code,
-                realm: "email",
+                connection: "email",
                 audience: audience,
                 scope: "openid profile email offline_access",
                 options: defaultOptions()
@@ -369,18 +379,24 @@ final class AuthViewModel {
                     await saveCredentials(credentials)
                     state = .success(credentials)
                 } else {
-                    state = .idle
+                    state = .failure(GenericAuth0Error("Unexpected response from the server."))
                 }
             case .failure(let failure):
-                state = (failure.error as? AuthenticationError).map(State.failure) ?? .idle
+                state = .failure(asAuth0Error(failure.error))
             }
         } catch {
-            state = .idle
+            state = .failure(asAuth0Error(error))
         }
     }
 
     func resetPasswordless() {
         passwordlessState = .idle
+    }
+
+    // Normalizes any failure (an SDK error, a transport/bridging error, or a thrown
+    // Swift error) into an `Auth0Error` so no broken path silently falls to `.idle`.
+    private func asAuth0Error(_ error: Any) -> any Auth0Error {
+        error as? (any Auth0Error) ?? GenericAuth0Error(String(describing: error))
     }
 
     // Passkey sign-up. The SDK is HTTP-only for passkeys, so the ceremony (the

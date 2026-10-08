@@ -431,7 +431,7 @@ exchange it for credentials.
 val passwordless = auth0.authentication.passwordlessClient()
 
 // 1. Send a one-time code to the user's email. Succeeds with Unit.
-passwordless.passwordlessWithEmail(email = "user@example.com")
+passwordless.startWithEmail(email = "user@example.com")
 
 // 2. Exchange the code for credentials.
 val result = passwordless.loginWithEmail(
@@ -446,10 +446,10 @@ val result = passwordless.loginWithEmail(
 val passwordless = auth0.authentication.passwordlessClient()
 
 // 1. Send a one-time code over SMS. Phone number must be in E.164 format.
-passwordless.passwordlessWithSMS(phoneNumber = "+15551234567")
+passwordless.startWithSms(phoneNumber = "+15551234567")
 
 // 2. Exchange the code for credentials.
-val result = passwordless.loginWithPhoneNumber(
+val result = passwordless.loginWithSms(
     phoneNumber = "+15551234567",
     code = "123456",
 )
@@ -471,11 +471,15 @@ or `phone_otp` enabled. Requires Auth0 support to enable it on your tenant.
 val passwordless = auth0.authentication.passwordlessClient()
 
 // 1. Request a challenge — Auth0 emails a code and returns an auth_session token.
-val challengeResult = passwordless.challengeWithEmail(
-    email = "user@example.com",
-    connection = "Username-Password-Authentication",
-)
-val challenge = (challengeResult as Result.Success).data
+val challenge = when (
+    val challengeResult = passwordless.challengeWithEmail(
+        email = "user@example.com",
+        connection = "Username-Password-Authentication",
+    )
+) {
+    is Result.Success -> challengeResult.data
+    is Result.Failure -> { /* handle error */ return }
+}
 
 // 2. Exchange the challenge + code the user received for credentials.
 val result = passwordless.loginWithOTP(
@@ -490,12 +494,16 @@ val result = passwordless.loginWithOTP(
 val passwordless = auth0.authentication.passwordlessClient()
 
 // 1. Request a challenge via SMS (or DeliveryMethod.VOICE for a call).
-val challengeResult = passwordless.challengeWithPhoneNumber(
-    phoneNumber = "+15551234567",
-    connection = "Username-Password-Authentication",
-    deliveryMethod = DeliveryMethod.TEXT,
-)
-val challenge = (challengeResult as Result.Success).data
+val challenge = when (
+    val challengeResult = passwordless.challengeWithPhoneNumber(
+        phoneNumber = "+15551234567",
+        connection = "Username-Password-Authentication",
+        deliveryMethod = DeliveryMethod.TEXT,
+    )
+) {
+    is Result.Success -> challengeResult.data
+    is Result.Failure -> { /* handle error */ return }
+}
 
 // 2. Exchange the challenge + code for credentials.
 val result = passwordless.loginWithOTP(

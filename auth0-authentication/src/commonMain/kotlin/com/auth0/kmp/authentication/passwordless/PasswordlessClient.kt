@@ -1,9 +1,9 @@
 package com.auth0.kmp.authentication.passwordless
 
 import com.auth0.kmp.authentication.error.AuthenticationError
-import com.auth0.kmp.authentication.model.DeliveryMethod
-import com.auth0.kmp.authentication.model.PasswordlessChallenge
-import com.auth0.kmp.authentication.model.PasswordlessType
+import com.auth0.kmp.authentication.passwordless.model.DeliveryMethod
+import com.auth0.kmp.authentication.passwordless.model.PasswordlessChallenge
+import com.auth0.kmp.authentication.passwordless.model.PasswordlessType
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
@@ -16,16 +16,13 @@ import com.auth0.kmp.core.result.Result
  * Two distinct flows are supported:
  *
  * **Classic passwordless flow** — uses an email or SMS connection. Start with
- * [passwordlessWithEmail] / [passwordlessWithSMS], then complete with
- * [loginWithEmail] / [loginWithPhoneNumber].
+ * [startWithEmail] / [startWithSms], then complete with [loginWithEmail] / [loginWithSms].
  *
  * **DB-connection OTP flow (Early Access)** — uses a database connection with email/phone OTP
  * enabled. Start with [challengeWithEmail] / [challengeWithPhoneNumber], then complete with
  * [loginWithOTP].
  */
 public interface PasswordlessClient {
-
-    // ─── Classic passwordless flow ──────────────────────────────────────────
 
     /**
      * Starts a classic passwordless flow that delivers a one-time code or link to an
@@ -40,7 +37,7 @@ public interface PasswordlessClient {
      * @return [Result.Success] on success, or [Result.Failure] with the
      *   [AuthenticationError] that occurred.
      */
-    public suspend fun passwordlessWithEmail(
+    public suspend fun startWithEmail(
         email: String,
         type: PasswordlessType = PasswordlessType.CODE,
         connection: String = "email",
@@ -51,7 +48,7 @@ public interface PasswordlessClient {
      * Starts a classic passwordless flow that delivers a one-time code or link to a
      * phone number over SMS via `POST /passwordless/start`.
      *
-     * Complete the flow with [loginWithPhoneNumber] once the user provides the code.
+     * Complete the flow with [loginWithSms] once the user provides the code.
      *
      * @param phoneNumber the phone number in E.164 format to send the code or link to.
      * @param type how the code or link is delivered; defaults to [PasswordlessType.CODE].
@@ -60,7 +57,7 @@ public interface PasswordlessClient {
      * @return [Result.Success] on success, or [Result.Failure] with the
      *   [AuthenticationError] that occurred.
      */
-    public suspend fun passwordlessWithSMS(
+    public suspend fun startWithSms(
         phoneNumber: String,
         type: PasswordlessType = PasswordlessType.CODE,
         connection: String = "sms",
@@ -73,7 +70,7 @@ public interface PasswordlessClient {
      *
      * @param email the email address the code was sent to.
      * @param code the one-time code the user received.
-     * @param realm the passwordless email connection to authenticate against; defaults to `"email"`.
+     * @param connection the passwordless email connection to authenticate against; defaults to `"email"`.
      * @param audience the API identifier to request an access token for, or `null` to omit it.
      * @param scope the space-separated scopes to request.
      * @param options per-call transport options (extra parameters, headers, retry policy).
@@ -83,7 +80,7 @@ public interface PasswordlessClient {
     public suspend fun loginWithEmail(
         email: String,
         code: String,
-        realm: String = "email",
+        connection: String = "email",
         audience: String? = null,
         scope: String = "openid profile email",
         options: RequestOptions = RequestOptions(),
@@ -95,23 +92,21 @@ public interface PasswordlessClient {
      *
      * @param phoneNumber the phone number, in E.164 format, the code was sent to.
      * @param code the one-time code the user received.
-     * @param realm the passwordless SMS connection to authenticate against; defaults to `"sms"`.
+     * @param connection the passwordless SMS connection to authenticate against; defaults to `"sms"`.
      * @param audience the API identifier to request an access token for, or `null` to omit it.
      * @param scope the space-separated scopes to request.
      * @param options per-call transport options (extra parameters, headers, retry policy).
      * @return [Result.Success] with the issued [Credentials], or [Result.Failure] with the
      *   [AuthenticationError] that occurred.
      */
-    public suspend fun loginWithPhoneNumber(
+    public suspend fun loginWithSms(
         phoneNumber: String,
         code: String,
-        realm: String = "sms",
+        connection: String = "sms",
         audience: String? = null,
         scope: String = "openid profile email",
         options: RequestOptions = RequestOptions(),
     ): Result<Credentials, AuthenticationError>
-
-    // ─── DB-connection OTP flow (Early Access) ──────────────────────────────
 
     /**
      * Issues an OTP challenge to an email address for a database connection
@@ -133,7 +128,7 @@ public interface PasswordlessClient {
      */
     public suspend fun challengeWithEmail(
         email: String,
-        connection: String = "Username-Password-Authentication",
+        connection: String,
         allowSignup: Boolean = false,
         options: RequestOptions = RequestOptions(),
     ): Result<PasswordlessChallenge, AuthenticationError>
@@ -159,7 +154,7 @@ public interface PasswordlessClient {
      */
     public suspend fun challengeWithPhoneNumber(
         phoneNumber: String,
-        connection: String = "Username-Password-Authentication",
+        connection: String,
         deliveryMethod: DeliveryMethod = DeliveryMethod.TEXT,
         allowSignup: Boolean = false,
         options: RequestOptions = RequestOptions(),

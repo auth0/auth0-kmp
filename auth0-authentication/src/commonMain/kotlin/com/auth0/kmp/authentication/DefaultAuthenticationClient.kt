@@ -33,7 +33,6 @@ import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.request.HttpMethod
 import com.auth0.kmp.networking.request.NetworkRequest
 import com.auth0.kmp.networking.transport.json
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
@@ -104,7 +103,7 @@ internal class DefaultAuthenticationClient(
             if (userMetadata.isNotEmpty()) put("user_metadata", json.encodeToJsonElement(userMetadata))
         }
 
-        return post("/dbconnections/signup", body, options) {
+        return networkClient.post("/dbconnections/signup", body, options) {
             json.decodeFromString<DatabaseUserResponse>(it).toDatabaseUser()
         }
     }
@@ -127,7 +126,7 @@ internal class DefaultAuthenticationClient(
             put("connection", connection)
         }
 
-        return post("/dbconnections/change_password", body, options) { }
+        return networkClient.post("/dbconnections/change_password", body, options) { }
     }
 
     override suspend fun userInfo(
@@ -167,7 +166,7 @@ internal class DefaultAuthenticationClient(
             put("token", refreshToken)
         }
 
-        return post("/oauth/revoke", body, options) { }
+        return networkClient.post("/oauth/revoke", body, options) { }
     }
 
     override suspend fun renew(
@@ -225,7 +224,7 @@ internal class DefaultAuthenticationClient(
             organization?.let { put("organization", it) }
         }
 
-        return post("/passkey/challenge", body, options) {
+        return networkClient.post("/passkey/challenge", body, options) {
             json.decodeFromString<PasskeyLoginChallengeResponse>(it).toPasskeyLoginChallenge()
         }
     }
@@ -245,7 +244,7 @@ internal class DefaultAuthenticationClient(
             organization?.let { put("organization", it) }
         }
 
-        return post("/passkey/register", body, options) {
+        return networkClient.post("/passkey/register", body, options) {
             json.decodeFromString<PasskeyRegistrationChallengeResponse>(it).toPasskeyRegistrationChallenge()
         }
     }
@@ -284,29 +283,4 @@ internal class DefaultAuthenticationClient(
         idTokenValidator = idTokenValidator,
         networkClient = networkClient,
     )
-
-    private inline fun jsonBody(
-        options: RequestOptions,
-        build: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit,
-    ): String = json.encodeToString(
-        buildJsonObject {
-            options.parameters.forEach { (key, value) -> put(key, value) }
-            build()
-        },
-    )
-
-    private suspend fun <T> post(
-        path: String,
-        body: String,
-        options: RequestOptions,
-        deserialize: (String) -> T,
-    ): Result<T, AuthenticationError> {
-        val request = NetworkRequest(
-            method = HttpMethod.POST,
-            path = path,
-            headers = options.headers,
-            body = body,
-        )
-        return networkClient.request(request, options.retryPolicy, deserialize).toAuthResult()
-    }
 }

@@ -1,4 +1,4 @@
-package com.auth0.kmp.authentication.model
+package com.auth0.kmp.authentication.passwordless.model
 
 /**
  * Delivery method for a phone-number OTP challenge in the DB-connection passwordless flow.

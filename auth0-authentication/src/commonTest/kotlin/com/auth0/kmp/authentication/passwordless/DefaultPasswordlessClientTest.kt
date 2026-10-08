@@ -1,9 +1,9 @@
 package com.auth0.kmp.authentication.passwordless
 
 import com.auth0.kmp.authentication.error.AuthenticationError
-import com.auth0.kmp.authentication.model.DeliveryMethod
-import com.auth0.kmp.authentication.model.PasswordlessChallenge
-import com.auth0.kmp.authentication.model.PasswordlessType
+import com.auth0.kmp.authentication.passwordless.model.DeliveryMethod
+import com.auth0.kmp.authentication.passwordless.model.PasswordlessChallenge
+import com.auth0.kmp.authentication.passwordless.model.PasswordlessType
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.error.TransportError
@@ -168,13 +168,13 @@ private fun restClient(
 
 class DefaultPasswordlessClientTest {
 
-    // ── passwordlessWithEmail ────────────────────────────────────────────────
+    // ── startWithEmail ────────────────────────────────────────────────
 
     @Test
-    fun passwordlessWithEmail_success_buildsStartRequest() = runTest {
+    fun startWithEmail_success_buildsStartRequest() = runTest {
         val (client, net) = restClient()
 
-        val result = client.passwordlessWithEmail(email = "a@b.com")
+        val result = client.startWithEmail(email = "a@b.com")
 
         assertTrue(result is Result.Success)
         val req = net.lastRequest!!
@@ -188,10 +188,10 @@ class DefaultPasswordlessClientTest {
     }
 
     @Test
-    fun passwordlessWithEmail_usesTypeAndConnection_whenProvided() = runTest {
+    fun startWithEmail_usesTypeAndConnection_whenProvided() = runTest {
         val (client, net) = restClient()
 
-        client.passwordlessWithEmail(
+        client.startWithEmail(
             email = "a@b.com",
             type = PasswordlessType.LINK,
             connection = "custom-email",
@@ -203,32 +203,32 @@ class DefaultPasswordlessClientTest {
     }
 
     @Test
-    fun passwordlessWithEmail_blankEmail_failsWithoutNetworkCall() = runTest {
+    fun startWithEmail_blankEmail_failsWithoutNetworkCall() = runTest {
         val (client, net) = restClient()
 
-        val result = client.passwordlessWithEmail(email = " ")
+        val result = client.startWithEmail(email = " ")
 
         assertTrue(result is Result.Failure && result.error is AuthenticationError.InvalidInput)
         assertEquals(0, net.callCount)
     }
 
     @Test
-    fun passwordlessWithEmail_blankConnection_failsWithoutNetworkCall() = runTest {
+    fun startWithEmail_blankConnection_failsWithoutNetworkCall() = runTest {
         val (client, net) = restClient()
 
-        val result = client.passwordlessWithEmail(email = "a@b.com", connection = " ")
+        val result = client.startWithEmail(email = "a@b.com", connection = " ")
 
         assertTrue(result is Result.Failure && result.error is AuthenticationError.InvalidInput)
         assertEquals(0, net.callCount)
     }
 
     @Test
-    fun passwordlessWithEmail_serverError_mapsToApiError() = runTest {
+    fun startWithEmail_serverError_mapsToApiError() = runTest {
         val (client, _) = restClient(
             Result.Failure(TransportError.Server(400, emptyMap(), """{"error":"bad_request","error_description":"nope"}""")),
         )
 
-        val result = client.passwordlessWithEmail(email = "a@b.com")
+        val result = client.startWithEmail(email = "a@b.com")
 
         assertEquals(
             Result.Failure(AuthenticationError.ApiError("bad_request", "nope", 400)),
@@ -236,13 +236,13 @@ class DefaultPasswordlessClientTest {
         )
     }
 
-    // ── passwordlessWithSMS ──────────────────────────────────────────────────
+    // ── startWithSms ──────────────────────────────────────────────────
 
     @Test
-    fun passwordlessWithSMS_success_buildsStartRequest() = runTest {
+    fun startWithSms_success_buildsStartRequest() = runTest {
         val (client, net) = restClient()
 
-        val result = client.passwordlessWithSMS(phoneNumber = "+15551234567")
+        val result = client.startWithSms(phoneNumber = "+15551234567")
 
         assertTrue(result is Result.Success)
         val req = net.lastRequest!!
@@ -255,10 +255,10 @@ class DefaultPasswordlessClientTest {
     }
 
     @Test
-    fun passwordlessWithSMS_blankPhoneNumber_failsWithoutNetworkCall() = runTest {
+    fun startWithSms_blankPhoneNumber_failsWithoutNetworkCall() = runTest {
         val (client, net) = restClient()
 
-        val result = client.passwordlessWithSMS(phoneNumber = " ")
+        val result = client.startWithSms(phoneNumber = " ")
 
         assertTrue(result is Result.Failure && result.error is AuthenticationError.InvalidInput)
         assertEquals(0, net.callCount)
@@ -322,13 +322,13 @@ class DefaultPasswordlessClientTest {
         assertTrue(result is Result.Failure && result.error is AuthenticationError.IdTokenValidation)
     }
 
-    // ── loginWithPhoneNumber ─────────────────────────────────────────────────
+    // ── loginWithSms ─────────────────────────────────────────────────
 
     @Test
-    fun loginWithPhoneNumber_success_buildsPasswordlessGrant_withSmsRealm() = runTest {
+    fun loginWithSms_success_buildsPasswordlessGrant_withSmsRealm() = runTest {
         val (client, tc, _) = tokenClient()
 
-        client.loginWithPhoneNumber(phoneNumber = "+15551234567", code = "123456")
+        client.loginWithSms(phoneNumber = "+15551234567", code = "123456")
 
         val params = tc.lastGrant!!.parameters
         assertEquals("+15551234567", params.str("username"))
@@ -337,10 +337,10 @@ class DefaultPasswordlessClientTest {
     }
 
     @Test
-    fun loginWithPhoneNumber_blankPhoneNumber_failsWithoutBuildingGrant() = runTest {
+    fun loginWithSms_blankPhoneNumber_failsWithoutBuildingGrant() = runTest {
         val (client, tc, _) = tokenClient()
 
-        val result = client.loginWithPhoneNumber(phoneNumber = " ", code = "123456")
+        val result = client.loginWithSms(phoneNumber = " ", code = "123456")
 
         assertTrue(result is Result.Failure && result.error is AuthenticationError.InvalidInput)
         assertNull(tc.lastGrant)

@@ -1,4 +1,4 @@
-package com.auth0.kmp.authentication.model
+package com.auth0.kmp.authentication.passwordless.model
 
 /**
  * How the one-time code or link is delivered when starting a passwordless flow.
