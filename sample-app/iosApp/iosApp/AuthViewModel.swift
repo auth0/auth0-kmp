@@ -7,6 +7,14 @@
 import Foundation
 import Auth0
 
+/// Wraps a non-`AuthenticationError` outcome (a transport/bridging error, or an
+/// unexpected success payload) so every broken path can surface through a
+/// `.failure` state instead of silently resetting to `.idle`.
+final class GenericAuth0Error: Auth0Error, Error {
+    let message: String
+    init(_ message: String) { self.message = message }
+}
+
 @MainActor
 @Observable
 final class AuthViewModel {
@@ -63,9 +71,35 @@ final class AuthViewModel {
         }
     }
 
+    // Drives the passwordless screen's "start" step only (sending the code). The
+    // "verify" step exchanges the code for tokens, so it drives the shared `State`
+    // like every other login, promoting to Welcome on success.
+    enum PasswordlessState: Equatable {
+        case idle
+        case sending
+        // The code was sent; the screen reveals the code entry + Verify button.
+        case codeSent
+        case failure(any Auth0Error)
+
+        static func == (lhs: PasswordlessState, rhs: PasswordlessState) -> Bool {
+            switch (lhs, rhs) {
+            case (.idle, .idle), (.sending, .sending), (.codeSent, .codeSent):
+                return true
+            case let (.failure(l), .failure(r)):
+                // Auth0Error is a bridged protocol with no reliable identity, so
+                // compare by described value to avoid spurious SwiftUI re-renders.
+                return String(describing: l) == String(describing: r)
+            default:
+                return false
+            }
+        }
+    }
+
     private(set) var state: State = .restoring
 
     private(set) var signupState: SignupState = .idle
+
+    private(set) var passwordlessState: PasswordlessState = .idle
 
     // Remembers the credentials entered on the sign-up screen so the confirmation
     // screen's "Log in" button can complete the sign-up → login hop without asking
@@ -299,6 +333,70 @@ final class AuthViewModel {
     func resetSignup() {
         signupState = .idle
         lastSignup = nil
+    }
+
+    // Step 1: sends a one-time code to the email. Succeeds with Unit (no tokens),
+    // so it drives its own PasswordlessState; .codeSent reveals the code field.
+    func passwordlessStart(email: String) async {
+        guard let client else { return }
+        passwordlessState = .sending
+        do {
+            let result = try await client.passwordlessClient().requestCodeByEmail(
+                email: email,
+                type: PasswordlessType.code,
+                connection: "email",
+                options: defaultOptions()
+            )
+            switch onEnum(of: result) {
+            case .success:
+                passwordlessState = .codeSent
+            case .failure(let failure):
+                passwordlessState = .failure(asAuth0Error(failure.error))
+            }
+        } catch {
+            passwordlessState = .failure(asAuth0Error(error))
+        }
+    }
+
+    // Step 2: exchanges the code for credentials. Drives the shared `State` so a
+    // success flows through the normal success→Welcome navigation.
+    func passwordlessVerify(email: String, code: String) async {
+        guard let client else { return }
+        state = .loading
+        do {
+            let result = try await client.passwordlessClient().loginWithEmail(
+                email: email,
+                code: code,
+                connection: "email",
+                audience: audience,
+                scope: "openid profile email offline_access",
+                options: defaultOptions()
+            )
+            switch onEnum(of: result) {
+            case .success(let success):
+                if let credentials = success.data as? Credentials {
+                    loginMethod = .embedded
+                    await saveCredentials(credentials)
+                    state = .success(credentials)
+                } else {
+                    state = .failure(GenericAuth0Error("Unexpected response from the server."))
+                }
+            case .failure(let failure):
+                state = .failure(asAuth0Error(failure.error))
+            }
+        } catch {
+            state = .failure(asAuth0Error(error))
+        }
+    }
+
+    func resetPasswordless() {
+        passwordlessState = .idle
+    }
+
+    // Normalizes any failure (an SDK error, a transport/bridging error, or a thrown
+    // Swift error) into an `Auth0Error` so no broken path silently falls to `.idle`.
+    private func asAuth0Error(_ error: Any) -> any Auth0Error {
+        error as? (any Auth0Error) ?? GenericAuth0Error(String(describing: error))
     }
 
     // Passkey sign-up. The SDK is HTTP-only for passkeys, so the ceremony (the

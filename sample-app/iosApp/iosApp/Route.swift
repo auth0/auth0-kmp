@@ -15,5 +15,6 @@ enum Route: Hashable {
     case signupResult
     case passkeySignup
     case passkeyLogin
+    case passwordless
     case welcome
 }

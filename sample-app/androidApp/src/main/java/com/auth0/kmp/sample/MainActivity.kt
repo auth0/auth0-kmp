@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     val state by viewModel.state.collectAsState()
                     val signupState by viewModel.signupState.collectAsState()
+                    val passwordlessState by viewModel.passwordlessState.collectAsState()
 
                     LaunchedEffect(Unit) {
                         viewModel.restoreSession()
@@ -84,6 +85,10 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onPasskeySignup = { navController.navigate(PasskeySignup) },
                                 onPasskeyLogin = { navController.navigate(PasskeyLogin) },
+                                onPasswordless = {
+                                    viewModel.resetPasswordless()
+                                    navController.navigate(Passwordless)
+                                },
                             )
                         }
                         composable<EmbeddedLogin> {
@@ -121,6 +126,15 @@ class MainActivity : ComponentActivity() {
                                 state = state,
                                 isConfigured = viewModel.isConfigured,
                                 onSignIn = viewModel::passkeyLogin,
+                            )
+                        }
+                        composable<Passwordless> {
+                            PasswordlessScreen(
+                                state = state,
+                                passwordlessState = passwordlessState,
+                                isConfigured = viewModel.isConfigured,
+                                onSendCode = viewModel::passwordlessStart,
+                                onVerify = viewModel::passwordlessVerify,
                             )
                         }
                         composable<Welcome> {

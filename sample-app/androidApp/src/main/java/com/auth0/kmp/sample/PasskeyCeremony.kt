@@ -8,8 +8,13 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.credentials.PublicKeyCredential
 import com.auth0.kmp.authentication.model.AuthParamsPublicKey
+import com.auth0.kmp.authentication.model.AuthenticatorResponse
 import com.auth0.kmp.authentication.model.AuthnParamsPublicKey
+import com.auth0.kmp.authentication.model.ClientExtensionResults
+import com.auth0.kmp.authentication.model.CredProps
 import com.auth0.kmp.authentication.model.PublicKeyCredentials
+import com.auth0.kmp.authentication.request.PublicKeyCredentialsRequest
+import com.auth0.kmp.core.annotation.InternalAuth0Api
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
@@ -113,6 +118,7 @@ object PasskeyCeremony {
             }
         }.toString()
 
+    @OptIn(InternalAuth0Api::class)
     private fun parseCredential(responseJson: String): PublicKeyCredentials {
         // The platform emits clientExtensionResults as an empty object when no
         // credProps was produced (typical on assertion), but the SDK model
@@ -125,6 +131,25 @@ object PasskeyCeremony {
         } else {
             JsonObject(root - "clientExtensionResults")
         }
-        return json.decodeFromJsonElement(PublicKeyCredentials.serializer(), cleaned)
+        // PublicKeyCredentials is a plain domain model (not serializable), so parse
+        // the platform JSON into the serializable wire DTO and map it to the domain.
+        val dto = json.decodeFromJsonElement(PublicKeyCredentialsRequest.serializer(), cleaned)
+        return PublicKeyCredentials(
+            id = dto.id,
+            rawId = dto.rawId,
+            type = dto.type,
+            response = AuthenticatorResponse(
+                clientDataJSON = dto.response.clientDataJSON,
+                attestationObject = dto.response.attestationObject,
+                authenticatorData = dto.response.authenticatorData,
+                signature = dto.response.signature,
+                userHandle = dto.response.userHandle,
+                transports = dto.response.transports,
+            ),
+            authenticatorAttachment = dto.authenticatorAttachment,
+            clientExtensionResults = dto.clientExtensionResults?.let {
+                ClientExtensionResults(credProps = CredProps(rk = it.credProps.rk))
+            },
+        )
     }
 }
