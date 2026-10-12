@@ -1,7 +1,6 @@
 package com.auth0.kmp.authentication.passwordless.response
 
 import com.auth0.kmp.authentication.passwordless.model.PasswordlessChallenge
-import com.auth0.kmp.core.annotation.InternalAuth0Api
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -10,11 +9,9 @@ import kotlinx.serialization.Serializable
  * [PasswordlessChallenge] domain model before it is handed to consumers.
  */
 @Serializable
-@InternalAuth0Api
-public data class PasswordlessChallengeResponse(
+internal data class PasswordlessChallengeResponse(
     @SerialName("auth_session") val authSession: String,
 )
 
-@InternalAuth0Api
-public fun PasswordlessChallengeResponse.toPasswordlessChallenge(): PasswordlessChallenge =
+internal fun PasswordlessChallengeResponse.toPasswordlessChallenge(): PasswordlessChallenge =
     PasswordlessChallenge(authSession = authSession)

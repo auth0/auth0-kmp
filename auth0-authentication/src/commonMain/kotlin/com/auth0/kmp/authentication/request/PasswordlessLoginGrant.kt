@@ -1,12 +1,10 @@
 package com.auth0.kmp.authentication.request
 
-import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.token.TokenGrant
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-@OptIn(InternalAuth0Api::class)
 internal class PasswordlessLoginGrant(
     username: String,
     otp: String,

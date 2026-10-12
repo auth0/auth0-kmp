@@ -168,13 +168,13 @@ private fun restClient(
 
 class DefaultPasswordlessClientTest {
 
-    // ── startWithEmail ────────────────────────────────────────────────
+    // ── requestCodeByEmail ────────────────────────────────────────────────
 
     @Test
-    fun startWithEmail_success_buildsStartRequest() = runTest {
+    fun requestCodeByEmail_success_buildsStartRequest() = runTest {
         val (client, net) = restClient()
 
-        val result = client.startWithEmail(email = "a@b.com")
+        val result = client.requestCodeByEmail(email = "a@b.com")
 
         assertTrue(result is Result.Success)
         val req = net.lastRequest!!
@@ -188,10 +188,10 @@ class DefaultPasswordlessClientTest {
     }
 
     @Test
-    fun startWithEmail_usesTypeAndConnection_whenProvided() = runTest {
+    fun requestCodeByEmail_usesTypeAndConnection_whenProvided() = runTest {
         val (client, net) = restClient()
 
-        client.startWithEmail(
+        client.requestCodeByEmail(
             email = "a@b.com",
             type = PasswordlessType.LINK,
             connection = "custom-email",
@@ -203,32 +203,32 @@ class DefaultPasswordlessClientTest {
     }
 
     @Test
-    fun startWithEmail_blankEmail_failsWithoutNetworkCall() = runTest {
+    fun requestCodeByEmail_blankEmail_failsWithoutNetworkCall() = runTest {
         val (client, net) = restClient()
 
-        val result = client.startWithEmail(email = " ")
+        val result = client.requestCodeByEmail(email = " ")
 
         assertTrue(result is Result.Failure && result.error is AuthenticationError.InvalidInput)
         assertEquals(0, net.callCount)
     }
 
     @Test
-    fun startWithEmail_blankConnection_failsWithoutNetworkCall() = runTest {
+    fun requestCodeByEmail_blankConnection_failsWithoutNetworkCall() = runTest {
         val (client, net) = restClient()
 
-        val result = client.startWithEmail(email = "a@b.com", connection = " ")
+        val result = client.requestCodeByEmail(email = "a@b.com", connection = " ")
 
         assertTrue(result is Result.Failure && result.error is AuthenticationError.InvalidInput)
         assertEquals(0, net.callCount)
     }
 
     @Test
-    fun startWithEmail_serverError_mapsToApiError() = runTest {
+    fun requestCodeByEmail_serverError_mapsToApiError() = runTest {
         val (client, _) = restClient(
             Result.Failure(TransportError.Server(400, emptyMap(), """{"error":"bad_request","error_description":"nope"}""")),
         )
 
-        val result = client.startWithEmail(email = "a@b.com")
+        val result = client.requestCodeByEmail(email = "a@b.com")
 
         assertEquals(
             Result.Failure(AuthenticationError.ApiError("bad_request", "nope", 400)),
@@ -236,13 +236,13 @@ class DefaultPasswordlessClientTest {
         )
     }
 
-    // ── startWithSms ──────────────────────────────────────────────────
+    // ── requestCodeBySms ──────────────────────────────────────────────────
 
     @Test
-    fun startWithSms_success_buildsStartRequest() = runTest {
+    fun requestCodeBySms_success_buildsStartRequest() = runTest {
         val (client, net) = restClient()
 
-        val result = client.startWithSms(phoneNumber = "+15551234567")
+        val result = client.requestCodeBySms(phoneNumber = "+15551234567")
 
         assertTrue(result is Result.Success)
         val req = net.lastRequest!!
@@ -255,10 +255,10 @@ class DefaultPasswordlessClientTest {
     }
 
     @Test
-    fun startWithSms_blankPhoneNumber_failsWithoutNetworkCall() = runTest {
+    fun requestCodeBySms_blankPhoneNumber_failsWithoutNetworkCall() = runTest {
         val (client, net) = restClient()
 
-        val result = client.startWithSms(phoneNumber = " ")
+        val result = client.requestCodeBySms(phoneNumber = " ")
 
         assertTrue(result is Result.Failure && result.error is AuthenticationError.InvalidInput)
         assertEquals(0, net.callCount)

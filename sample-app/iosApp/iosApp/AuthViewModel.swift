@@ -341,7 +341,7 @@ final class AuthViewModel {
         guard let client else { return }
         passwordlessState = .sending
         do {
-            let result = try await client.passwordlessClient().startWithEmail(
+            let result = try await client.passwordlessClient().requestCodeByEmail(
                 email: email,
                 type: PasswordlessType.code,
                 connection: "email",

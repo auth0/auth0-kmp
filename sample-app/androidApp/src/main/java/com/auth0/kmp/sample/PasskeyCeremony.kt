@@ -1,4 +1,4 @@
-git add sample-app/androidApp/src/main/java/com/auth0/kmp/sample/PasskeyCeremony.ktpackage com.auth0.kmp.sample
+package com.auth0.kmp.sample
 
 import android.content.Context
 import androidx.credentials.CreatePublicKeyCredentialRequest

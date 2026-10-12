@@ -12,7 +12,6 @@ import com.auth0.kmp.authentication.post
 import com.auth0.kmp.authentication.request.PasswordlessChallengeGrant
 import com.auth0.kmp.authentication.request.PasswordlessLoginGrant
 import com.auth0.kmp.core.RequestOptions
-import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.core.token.TokenClient
@@ -21,7 +20,6 @@ import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.transport.json
 import kotlinx.serialization.json.put
 
-@OptIn(InternalAuth0Api::class)
 internal class DefaultPasswordlessClient(
     private val clientId: String,
     private val tokenClient: TokenClient,
@@ -29,7 +27,7 @@ internal class DefaultPasswordlessClient(
     private val networkClient: NetworkClient,
 ) : PasswordlessClient {
 
-    override suspend fun startWithEmail(
+    override suspend fun requestCodeByEmail(
         email: String,
         type: PasswordlessType,
         connection: String,
@@ -52,7 +50,7 @@ internal class DefaultPasswordlessClient(
         return networkClient.post("/passwordless/start", body, options) { }
     }
 
-    override suspend fun startWithSms(
+    override suspend fun requestCodeBySms(
         phoneNumber: String,
         type: PasswordlessType,
         connection: String,
@@ -94,38 +92,6 @@ internal class DefaultPasswordlessClient(
         options: RequestOptions,
     ): Result<Credentials, AuthenticationError> =
         loginWithPasswordlessCode(phoneNumber, code, connection, audience, scope, options)
-
-    private suspend fun loginWithPasswordlessCode(
-        username: String,
-        code: String,
-        connection: String,
-        audience: String?,
-        scope: String,
-        options: RequestOptions,
-    ): Result<Credentials, AuthenticationError> {
-        if (username.isBlank()) {
-            return Result.Failure(AuthenticationError.InvalidInput("username must not be blank"))
-        }
-        if (code.isBlank()) {
-            return Result.Failure(AuthenticationError.InvalidInput("code must not be blank"))
-        }
-        if (connection.isBlank()) {
-            return Result.Failure(AuthenticationError.InvalidInput("connection must not be blank"))
-        }
-
-        val grant = PasswordlessLoginGrant(
-            username = username,
-            otp = code,
-            realm = connection,
-            clientId = clientId,
-            scope = scope,
-            audience = audience,
-            extraParameters = options.parameters,
-        )
-
-        return tokenClient.fetchToken(grant, options.headers, options.retryPolicy)
-            .foldToCredentials(idTokenValidator, validateIdToken = true)
-    }
 
     override suspend fun challengeWithEmail(
         email: String,
@@ -193,6 +159,38 @@ internal class DefaultPasswordlessClient(
         val grant = PasswordlessChallengeGrant(
             authSession = challenge.authSession,
             otp = otp,
+            clientId = clientId,
+            scope = scope,
+            audience = audience,
+            extraParameters = options.parameters,
+        )
+
+        return tokenClient.fetchToken(grant, options.headers, options.retryPolicy)
+            .foldToCredentials(idTokenValidator, validateIdToken = true)
+    }
+
+    private suspend fun loginWithPasswordlessCode(
+        username: String,
+        code: String,
+        connection: String,
+        audience: String?,
+        scope: String,
+        options: RequestOptions,
+    ): Result<Credentials, AuthenticationError> {
+        if (username.isBlank()) {
+            return Result.Failure(AuthenticationError.InvalidInput("username must not be blank"))
+        }
+        if (code.isBlank()) {
+            return Result.Failure(AuthenticationError.InvalidInput("code must not be blank"))
+        }
+        if (connection.isBlank()) {
+            return Result.Failure(AuthenticationError.InvalidInput("connection must not be blank"))
+        }
+
+        val grant = PasswordlessLoginGrant(
+            username = username,
+            otp = code,
+            realm = connection,
             clientId = clientId,
             scope = scope,
             audience = audience,

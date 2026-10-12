@@ -431,7 +431,7 @@ exchange it for credentials.
 val passwordless = auth0.authentication.passwordlessClient()
 
 // 1. Send a one-time code to the user's email. Succeeds with Unit.
-passwordless.startWithEmail(email = "user@example.com")
+passwordless.requestCodeByEmail(email = "user@example.com")
 
 // 2. Exchange the code for credentials.
 val result = passwordless.loginWithEmail(
@@ -446,7 +446,7 @@ val result = passwordless.loginWithEmail(
 val passwordless = auth0.authentication.passwordlessClient()
 
 // 1. Send a one-time code over SMS. Phone number must be in E.164 format.
-passwordless.startWithSms(phoneNumber = "+15551234567")
+passwordless.requestCodeBySms(phoneNumber = "+15551234567")
 
 // 2. Exchange the code for credentials.
 val result = passwordless.loginWithSms(

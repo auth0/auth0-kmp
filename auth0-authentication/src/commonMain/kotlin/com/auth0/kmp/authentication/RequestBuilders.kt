@@ -2,7 +2,6 @@ package com.auth0.kmp.authentication
 
 import com.auth0.kmp.authentication.error.AuthenticationError
 import com.auth0.kmp.core.RequestOptions
-import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.request.HttpMethod
@@ -31,7 +30,6 @@ internal inline fun jsonBody(
  * Sends a `POST` to [path] with [body] and maps the transport outcome into an
  * [AuthenticationError] result. Shared by the authentication clients.
  */
-@OptIn(InternalAuth0Api::class)
 internal suspend fun <T> NetworkClient.post(
     path: String,
     body: String,

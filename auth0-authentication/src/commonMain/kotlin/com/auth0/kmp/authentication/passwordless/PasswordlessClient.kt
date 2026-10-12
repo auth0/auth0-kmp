@@ -16,7 +16,7 @@ import com.auth0.kmp.core.result.Result
  * Two distinct flows are supported:
  *
  * **Classic passwordless flow** — uses an email or SMS connection. Start with
- * [startWithEmail] / [startWithSms], then complete with [loginWithEmail] / [loginWithSms].
+ * [requestCodeByEmail] / [requestCodeBySms], then complete with [loginWithEmail] / [loginWithSms].
  *
  * **DB-connection OTP flow (Early Access)** — uses a database connection with email/phone OTP
  * enabled. Start with [challengeWithEmail] / [challengeWithPhoneNumber], then complete with
@@ -37,7 +37,7 @@ public interface PasswordlessClient {
      * @return [Result.Success] on success, or [Result.Failure] with the
      *   [AuthenticationError] that occurred.
      */
-    public suspend fun startWithEmail(
+    public suspend fun requestCodeByEmail(
         email: String,
         type: PasswordlessType = PasswordlessType.CODE,
         connection: String = "email",
@@ -57,7 +57,7 @@ public interface PasswordlessClient {
      * @return [Result.Success] on success, or [Result.Failure] with the
      *   [AuthenticationError] that occurred.
      */
-    public suspend fun startWithSms(
+    public suspend fun requestCodeBySms(
         phoneNumber: String,
         type: PasswordlessType = PasswordlessType.CODE,
         connection: String = "sms",
