@@ -9,8 +9,7 @@ import com.auth0.kmp.authentication.passwordless.model.PasswordlessType
 import com.auth0.kmp.authentication.passwordless.response.PasswordlessChallengeResponse
 import com.auth0.kmp.authentication.passwordless.response.toPasswordlessChallenge
 import com.auth0.kmp.authentication.post
-import com.auth0.kmp.authentication.request.PasswordlessChallengeGrant
-import com.auth0.kmp.authentication.request.PasswordlessLoginGrant
+import com.auth0.kmp.authentication.request.PasswordlessGrant
 import com.auth0.kmp.core.RequestOptions
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
@@ -156,13 +155,12 @@ internal class DefaultPasswordlessClient(
             return Result.Failure(AuthenticationError.InvalidInput("otp must not be blank"))
         }
 
-        val grant = PasswordlessChallengeGrant(
-            authSession = challenge.authSession,
+        val grant = PasswordlessGrant(
             otp = otp,
             clientId = clientId,
             scope = scope,
             audience = audience,
-            extraParameters = options.parameters,
+            extraParameters = options.parameters + ("auth_session" to challenge.authSession),
         )
 
         return tokenClient.fetchToken(grant, options.headers, options.retryPolicy)
@@ -187,14 +185,12 @@ internal class DefaultPasswordlessClient(
             return Result.Failure(AuthenticationError.InvalidInput("connection must not be blank"))
         }
 
-        val grant = PasswordlessLoginGrant(
-            username = username,
+        val grant = PasswordlessGrant(
             otp = code,
-            realm = connection,
             clientId = clientId,
             scope = scope,
             audience = audience,
-            extraParameters = options.parameters,
+            extraParameters = options.parameters + mapOf("username" to username, "realm" to connection),
         )
 
         return tokenClient.fetchToken(grant, options.headers, options.retryPolicy)

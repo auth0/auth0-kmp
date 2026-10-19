@@ -5,7 +5,6 @@ import com.auth0.kmp.authentication.passwordless.model.DeliveryMethod
 import com.auth0.kmp.authentication.passwordless.model.PasswordlessChallenge
 import com.auth0.kmp.authentication.passwordless.model.PasswordlessType
 import com.auth0.kmp.core.RequestOptions
-import com.auth0.kmp.core.annotation.InternalAuth0Api
 import com.auth0.kmp.core.error.TransportError
 import com.auth0.kmp.core.model.Credentials
 import com.auth0.kmp.core.result.Result
@@ -30,8 +29,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
-// ─── Test helpers ────────────────────────────────────────────────────────────
-
 private fun JsonObject.str(key: String): String? = this[key]?.jsonPrimitive?.content
 private fun JsonObject.bool(key: String): Boolean? = this[key]?.jsonPrimitive?.content?.toBooleanStrictOrNull()
 private fun bodyOf(request: NetworkRequest): JsonObject =
@@ -49,7 +46,6 @@ private fun credentials(idToken: String = ID_TOKEN): Credentials = Credentials(
     scope = "openid profile email",
 )
 
-@OptIn(InternalAuth0Api::class)
 private class FakeTokenClient(
     private val outcome: Result<Credentials, TransportError>,
 ) : TokenClient {
@@ -87,7 +83,6 @@ private class FakeIdTokenValidator(
     }
 }
 
-@OptIn(InternalAuth0Api::class)
 private class RecordingNetworkClient(
     private val outcome: Result<String, TransportError>,
 ) : NetworkClient {
@@ -135,7 +130,6 @@ private class RecordingNetworkClient(
     override fun close() {}
 }
 
-/** Token-based call (verify steps). */
 private fun tokenClient(
     outcome: Result<Credentials, TransportError> = Result.Success(credentials()),
     validator: FakeIdTokenValidator = FakeIdTokenValidator(),
@@ -150,7 +144,6 @@ private fun tokenClient(
     return Triple(client, tc, validator)
 }
 
-/** REST-call (start / challenge steps). */
 private fun restClient(
     outcome: Result<String, TransportError> = Result.Success(""),
 ): Pair<DefaultPasswordlessClient, RecordingNetworkClient> {
@@ -164,11 +157,7 @@ private fun restClient(
     return client to net
 }
 
-// ─── Tests ───────────────────────────────────────────────────────────────────
-
 class DefaultPasswordlessClientTest {
-
-    // ── requestCodeByEmail ────────────────────────────────────────────────
 
     @Test
     fun requestCodeByEmail_success_buildsStartRequest() = runTest {
@@ -236,8 +225,6 @@ class DefaultPasswordlessClientTest {
         )
     }
 
-    // ── requestCodeBySms ──────────────────────────────────────────────────
-
     @Test
     fun requestCodeBySms_success_buildsStartRequest() = runTest {
         val (client, net) = restClient()
@@ -263,8 +250,6 @@ class DefaultPasswordlessClientTest {
         assertTrue(result is Result.Failure && result.error is AuthenticationError.InvalidInput)
         assertEquals(0, net.callCount)
     }
-
-    // ── loginWithEmail ───────────────────────────────────────────────────────
 
     @Test
     fun loginWithEmail_success_buildsPasswordlessGrant_andValidatesIdToken() = runTest {
@@ -322,8 +307,6 @@ class DefaultPasswordlessClientTest {
         assertTrue(result is Result.Failure && result.error is AuthenticationError.IdTokenValidation)
     }
 
-    // ── loginWithSms ─────────────────────────────────────────────────
-
     @Test
     fun loginWithSms_success_buildsPasswordlessGrant_withSmsRealm() = runTest {
         val (client, tc, _) = tokenClient()
@@ -345,8 +328,6 @@ class DefaultPasswordlessClientTest {
         assertTrue(result is Result.Failure && result.error is AuthenticationError.InvalidInput)
         assertNull(tc.lastGrant)
     }
-
-    // ── challengeWithEmail ───────────────────────────────────────────────────
 
     @Test
     fun challengeWithEmail_success_buildsOtpChallengeRequest() = runTest {
@@ -404,8 +385,6 @@ class DefaultPasswordlessClientTest {
         assertEquals(0, net.callCount)
     }
 
-    // ── challengeWithPhoneNumber ─────────────────────────────────────────────
-
     @Test
     fun challengeWithPhoneNumber_success_buildsOtpChallengeRequest() = runTest {
         val (client, net) = restClient(Result.Success("""{"auth_session":"sess-xyz"}"""))
@@ -448,8 +427,6 @@ class DefaultPasswordlessClientTest {
         assertEquals(0, net.callCount)
     }
 
-    // ── loginWithOTP ─────────────────────────────────────────────────────────
-
     @Test
     fun loginWithOTP_success_buildsChallengeGrant_andValidatesIdToken() = runTest {
         val (client, tc, validator) = tokenClient()
@@ -464,8 +441,8 @@ class DefaultPasswordlessClientTest {
         assertEquals("sess-abc", params.str("auth_session"))
         assertEquals("654321", params.str("otp"))
         assertEquals("openid", params.str("scope"))
-        assertNull(params.str("username"))    // must NOT send username in this flow
-        assertNull(params.str("realm"))       // must NOT send realm in this flow
+        assertNull(params.str("username"))
+        assertNull(params.str("realm"))
         assertEquals(ID_TOKEN, validator.lastIdToken)
     }
 
