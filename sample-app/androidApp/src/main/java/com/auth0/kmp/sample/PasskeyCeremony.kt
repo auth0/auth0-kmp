@@ -8,12 +8,20 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.credentials.PublicKeyCredential
 import com.auth0.kmp.authentication.model.AuthParamsPublicKey
+import com.auth0.kmp.authentication.model.AuthenticatorResponse
 import com.auth0.kmp.authentication.model.AuthnParamsPublicKey
+import com.auth0.kmp.authentication.model.ClientExtensionResults
+import com.auth0.kmp.authentication.model.CredProps
 import com.auth0.kmp.authentication.model.PublicKeyCredentials
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
@@ -113,18 +121,34 @@ object PasskeyCeremony {
             }
         }.toString()
 
+    // Reads the platform's credential JSON straight into the public PublicKeyCredentials
+    // model. The platform emits clientExtensionResults as an empty object when no
+    // credProps was produced (typical on assertion); that maps to null here.
     private fun parseCredential(responseJson: String): PublicKeyCredentials {
-        // The platform emits clientExtensionResults as an empty object when no
-        // credProps was produced (typical on assertion), but the SDK model
-        // requires credProps inside it. Drop the key when it has no credProps so
-        // the surrounding credential still deserializes.
-        val root = json.parseToJsonElement(responseJson) as JsonObject
-        val ext = root["clientExtensionResults"] as? JsonObject
-        val cleaned = if (ext != null && ext.containsKey("credProps")) {
-            root
-        } else {
-            JsonObject(root - "clientExtensionResults")
-        }
-        return json.decodeFromJsonElement(PublicKeyCredentials.serializer(), cleaned)
+        val root = json.parseToJsonElement(responseJson).jsonObject
+        val response = root.getValue("response").jsonObject
+        val credProps = root["clientExtensionResults"]?.jsonObject?.get("credProps")?.jsonObject
+
+        return PublicKeyCredentials(
+            id = root.string("id"),
+            rawId = root.string("rawId"),
+            type = root.string("type"),
+            response = AuthenticatorResponse(
+                clientDataJSON = response.string("clientDataJSON"),
+                attestationObject = response.optString("attestationObject"),
+                authenticatorData = response.optString("authenticatorData"),
+                signature = response.optString("signature"),
+                userHandle = response.optString("userHandle"),
+                transports = response["transports"]?.jsonArray?.map { it.jsonPrimitive.content },
+            ),
+            authenticatorAttachment = root.optString("authenticatorAttachment"),
+            clientExtensionResults = credProps?.let {
+                ClientExtensionResults(credProps = CredProps(rk = it.getValue("rk").jsonPrimitive.boolean))
+            },
+        )
     }
+
+    private fun JsonObject.string(key: String): String = getValue(key).jsonPrimitive.content
+
+    private fun JsonObject.optString(key: String): String? = this[key]?.jsonPrimitive?.contentOrNull
 }
