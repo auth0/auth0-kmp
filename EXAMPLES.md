@@ -462,9 +462,9 @@ connections. Pass a different `type` to send a magic `link` instead, or a custom
 
 #### DB-connection OTP flow (Early Access)
 
-> [!NOTE]
-> This feature is currently in Early Access. Contact Auth0 support to enable it on
-> your tenant, and expect the API to change before general availability.
+> [!IMPORTANT]
+> Passwordless Login for database connections is currently in [Early Access](https://auth0.com/docs/troubleshoot/product-lifecycle/product-release-stages#early-access).
+> Please reach out to Auth0 support to get it enabled for your tenant.
 
 A challenge-based variant that works against a database connection with `email_otp`
 or `phone_otp` enabled.
