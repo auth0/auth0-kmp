@@ -175,3 +175,26 @@ internal fun publicKeyCredentials(id: String = "cred-1"): PublicKeyCredentials =
             transports = listOf("internal"),
         ),
     )
+
+// --- Profile response fixtures (GET/PATCH /me/v1/profile) ---
+
+internal fun profileJson(): String =
+    """{"user_id":"auth0|123","given_name":"Jane","family_name":"Doe","name":"Jane Doe",""" +
+        """"nickname":"jane","picture":"https://example.com/jane.png","email":"jane@example.com",""" +
+        """"email_verified":true,"phone_number":"+15551234567","phone_verified":false,"username":"janed",""" +
+        """"created_at":"2026-01-02T03:04:05Z","updated_at":"2026-03-04T05:06:07Z",""" +
+        """"profile_policy":{"/given_name":{"access":"read_write","source":"user"},""" +
+        """"/email":{"access":"read_only","source":"idp","reason":"managed_by_identity_provider"}}}"""
+
+/** What the API returns today: no `user_id`, `email_verified` or `phone_verified`. */
+internal fun profileWithoutReadOnlyFieldsJson(): String =
+    """{"given_name":"Jane","email":"jane@example.com","created_at":"2026-01-02T03:04:05Z"}"""
+
+internal fun problemJson(
+    status: Int,
+    type: String,
+    title: String,
+    validationErrors: String = "",
+): String =
+    """{"type":"$type","title":"$title","detail":"detail","status":$status""" +
+        (if (validationErrors.isEmpty()) "" else ""","validation_errors":$validationErrors""") + "}"

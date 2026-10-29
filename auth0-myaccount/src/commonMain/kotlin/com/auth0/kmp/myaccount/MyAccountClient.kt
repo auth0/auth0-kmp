@@ -5,6 +5,7 @@ import com.auth0.kmp.core.result.Result
 import com.auth0.kmp.myaccount.error.MyAccountError
 import com.auth0.kmp.myaccount.model.EmailAuthenticationMethod
 import com.auth0.kmp.myaccount.model.EmailEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.MyAccountProfile
 import com.auth0.kmp.myaccount.model.PasskeyAuthenticationMethod
 import com.auth0.kmp.myaccount.model.PasskeyEnrollmentChallenge
 import com.auth0.kmp.myaccount.model.PasswordAuthenticationMethod
@@ -19,6 +20,7 @@ import com.auth0.kmp.myaccount.model.RecoveryCodeAuthenticationMethod
 import com.auth0.kmp.myaccount.model.RecoveryCodeEnrollmentChallenge
 import com.auth0.kmp.myaccount.model.TotpAuthenticationMethod
 import com.auth0.kmp.myaccount.model.TotpEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.UpdateUserProfileRequest
 
 
 public interface MyAccountClient : AutoCloseable {
@@ -410,6 +412,100 @@ public interface MyAccountClient : AutoCloseable {
         newPassword: String,
         options: RequestOptions = RequestOptions(),
     ): Result<PasswordAuthenticationMethod, MyAccountError>
+
+    /**
+     * Retrieves the current user's profile.
+     *
+     * Use [fields] to choose which properties the server returns. When [fields] is
+     * set and does not contain `profile_policy`, the response carries no policy and
+     * [MyAccountProfile.profilePolicy] is `null`.
+     *
+     * [MyAccountProfile.profilePolicy] is keyed by a JSON Pointer to the field —
+     * for example `/given_name` or `/email` — not by the plain field name.
+     *
+     * The access token must be issued for the My Account audience
+     * (`https://YOUR_DOMAIN/me/`). The profile endpoints are rate limited per user,
+     * with `GET` and `PATCH` counted separately.
+     *
+     * ## Scopes Required
+     *
+     * `read:me:profile`
+     *
+     * ## Usage
+     *
+     * ```kotlin
+     * val myAccount = auth0.myAccount(accessToken)
+     *
+     * // The whole profile, including the per-field policy.
+     * when (val result = myAccount.getUserProfile()) {
+     *     is Result.Success -> { /* result.data is a MyAccountProfile */ }
+     *     is Result.Failure -> { /* result.error is a MyAccountError */ }
+     * }
+     *
+     * // Only some fields, plus the policy.
+     * myAccount.getUserProfile(fields = listOf("given_name", "picture", "profile_policy"))
+     *
+     * // Everything except some fields.
+     * myAccount.getUserProfile(fields = listOf("picture"), includeFields = false)
+     * ```
+     *
+     * @param fields the fields to include in (or, with `includeFields = false`,
+     *   exclude from) the response, for example `listOf("given_name", "profile_policy")`.
+     *   Sent as one comma-separated value; nothing is sent when `null` or empty.
+     * @param includeFields whether [fields] are included (`true`) or excluded
+     *   (`false`). Only sent when [fields] is not empty; the server defaults to
+     *   inclusion.
+     * @param options per-call transport options (extra parameters, headers, retry policy).
+     * @return [Result.Success] with the [MyAccountProfile], or [Result.Failure] with
+     *   the [MyAccountError] that occurred. A feature that is not enabled for the
+     *   tenant, or a scope that was not granted, surfaces as a `403`
+     *   [MyAccountError.ApiError].
+     */
+    public suspend fun getUserProfile(
+        fields: List<String>? = null,
+        includeFields: Boolean? = null,
+        options: RequestOptions = RequestOptions(),
+    ): Result<MyAccountProfile, MyAccountError>
+
+    /**
+     * Updates the current user's profile.
+     *
+     * Only the non-null properties of [request] are sent. A request with nothing
+     * set is valid and returns the current profile. The result is the full updated
+     * profile, in the same shape as [getUserProfile].
+     *
+     * Changing a read-only field fails with a `400` [MyAccountError.ApiError] whose
+     * [MyAccountError.ApiError.validationErrors] point at the offending field, for
+     * example `/given_name`. An invalid value (such as a `picture` that is not a
+     * URL) fails the same way.
+     *
+     * The access token must be issued for the My Account audience
+     * (`https://YOUR_DOMAIN/me/`). The profile endpoints are rate limited per user,
+     * with `GET` and `PATCH` counted separately.
+     *
+     * ## Scopes Required
+     *
+     * `update:me:profile`
+     *
+     * ## Usage
+     *
+     * ```kotlin
+     * val request = UpdateUserProfileRequest(givenName = "Jane", nickname = "jane")
+     * when (val result = auth0.myAccount(accessToken).updateUserProfile(request)) {
+     *     is Result.Success -> { /* result.data is the updated MyAccountProfile */ }
+     *     is Result.Failure -> { /* result.error is a MyAccountError */ }
+     * }
+     * ```
+     *
+     * @param request the properties to change; `null` properties are left unchanged.
+     * @param options per-call transport options (extra parameters, headers, retry policy).
+     * @return [Result.Success] with the updated [MyAccountProfile], or [Result.Failure]
+     *   with the [MyAccountError] that occurred.
+     */
+    public suspend fun updateUserProfile(
+        request: UpdateUserProfileRequest,
+        options: RequestOptions = RequestOptions(),
+    ): Result<MyAccountProfile, MyAccountError>
 
     /**
      * Releases the network transport backing this client.

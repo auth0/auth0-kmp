@@ -7,6 +7,7 @@ import com.auth0.kmp.core.result.flatMap
 import com.auth0.kmp.myaccount.error.MyAccountError
 import com.auth0.kmp.myaccount.model.EmailAuthenticationMethod
 import com.auth0.kmp.myaccount.model.EmailEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.MyAccountProfile
 import com.auth0.kmp.myaccount.model.PasskeyAuthenticationMethod
 import com.auth0.kmp.myaccount.model.PasskeyEnrollmentChallenge
 import com.auth0.kmp.myaccount.model.PasswordAuthenticationMethod
@@ -21,8 +22,10 @@ import com.auth0.kmp.myaccount.model.RecoveryCodeAuthenticationMethod
 import com.auth0.kmp.myaccount.model.RecoveryCodeEnrollmentChallenge
 import com.auth0.kmp.myaccount.model.TotpAuthenticationMethod
 import com.auth0.kmp.myaccount.model.TotpEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.UpdateUserProfileRequest
 import com.auth0.kmp.myaccount.response.EmailAuthenticationMethodResponse
 import com.auth0.kmp.myaccount.response.EmailEnrollmentChallengeResponse
+import com.auth0.kmp.myaccount.response.MyAccountProfileResponse
 import com.auth0.kmp.myaccount.response.PasskeyAuthenticationMethodResponse
 import com.auth0.kmp.myaccount.response.PasskeyEnrollmentChallengeResponse
 import com.auth0.kmp.myaccount.response.PasswordAuthenticationMethodResponse
@@ -37,6 +40,7 @@ import com.auth0.kmp.myaccount.response.TotpAuthenticationMethodResponse
 import com.auth0.kmp.myaccount.response.TotpEnrollmentChallengeResponse
 import com.auth0.kmp.myaccount.response.toEmailAuthenticationMethod
 import com.auth0.kmp.myaccount.response.toEmailEnrollmentChallenge
+import com.auth0.kmp.myaccount.response.toMyAccountProfile
 import com.auth0.kmp.myaccount.response.toPasskeyAuthenticationMethod
 import com.auth0.kmp.myaccount.response.toPasskeyEnrollmentChallenge
 import com.auth0.kmp.myaccount.response.toPasswordAuthenticationMethod
@@ -436,6 +440,55 @@ internal class DefaultMyAccountClient(
         }.toMyAccountResult()
     }
 
+    override suspend fun getUserProfile(
+        fields: List<String>?,
+        includeFields: Boolean?,
+        options: RequestOptions,
+    ): Result<MyAccountProfile, MyAccountError> {
+        val query = buildMap {
+            putAll(options.parameters)
+            if (!fields.isNullOrEmpty()) {
+                put("fields", fields.joinToString(","))
+                includeFields?.let { put("include_fields", it.toString()) }
+            }
+        }
+
+        val request = NetworkRequest(
+            method = HttpMethod.GET,
+            path = PROFILE_PATH,
+            headers = authHeaders(options),
+            query = query,
+        )
+
+        return networkClient.request(request, options.retryPolicy) {
+            json.decodeFromString<MyAccountProfileResponse>(it).toMyAccountProfile()
+        }.toMyAccountResult()
+    }
+
+    override suspend fun updateUserProfile(
+        request: UpdateUserProfileRequest,
+        options: RequestOptions,
+    ): Result<MyAccountProfile, MyAccountError> {
+        val body = jsonBody(options) {
+            request.givenName?.let { put("given_name", it) }
+            request.familyName?.let { put("family_name", it) }
+            request.name?.let { put("name", it) }
+            request.nickname?.let { put("nickname", it) }
+            request.picture?.let { put("picture", it) }
+        }
+
+        val networkRequest = NetworkRequest(
+            method = HttpMethod.PATCH,
+            path = PROFILE_PATH,
+            headers = authHeaders(options),
+            body = body,
+        )
+
+        return networkClient.request(networkRequest, options.retryPolicy) {
+            json.decodeFromString<MyAccountProfileResponse>(it).toMyAccountProfile()
+        }.toMyAccountResult()
+    }
+
     private fun PhoneAuthenticationMethodType.toApiValue(): String =
         when (this) {
             PhoneAuthenticationMethodType.SMS -> "sms"
@@ -457,6 +510,8 @@ internal class DefaultMyAccountClient(
         },
     )
 }
+
+private const val PROFILE_PATH = "/me/v1/profile"
 
 /**
  * Reported as [MyAccountError.MalformedResponse] when a successful challenge

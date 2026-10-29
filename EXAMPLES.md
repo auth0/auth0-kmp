@@ -1029,6 +1029,105 @@ when (
 }
 ```
 
+### Get the user profile
+
+Read the signed-in user's profile. The access token must be issued for the
+`https://YOUR_DOMAIN/me/` audience and carry the `read:me:profile` scope.
+
+```kotlin
+when (val result = auth0.myAccount(accessToken).getUserProfile()) {
+    is Result.Success -> {
+        val profile = result.data
+        println("${profile.givenName} ${profile.familyName} <${profile.email}>")
+    }
+    is Result.Failure -> { /* result.error is a MyAccountError */ }
+}
+```
+
+Every property of `MyAccountProfile` is nullable: the server omits fields that
+are not set for the user. `createdAt` and `updatedAt` are `Instant`s.
+
+Use `fields` to choose what the server returns. Set `includeFields = false` to
+return everything *except* those fields. `includeFields` is only sent when
+`fields` is not empty.
+
+```kotlin
+// Only these fields.
+myAccount.getUserProfile(fields = listOf("given_name", "picture", "profile_policy"))
+
+// Everything except these fields.
+myAccount.getUserProfile(fields = listOf("picture"), includeFields = false)
+```
+
+The response includes `profilePolicy`, which says per field whether the user can
+edit it and why. It is keyed by a **JSON Pointer** to the field — `/given_name`,
+`/email` — not by the plain field name. It is `null` when `fields` is set and does
+not contain `profile_policy`.
+
+```kotlin
+val policy = profile.profilePolicy?.get("/email")
+if (policy?.access == ProfileFieldAccess.READ_ONLY) {
+    // policy.source is USER, IDP or SYSTEM; policy.reason is a free-form string
+    // such as "managed_by_identity_provider".
+}
+```
+
+`access` and `source` are `null` if the server returns a value this SDK version
+does not know; the profile still decodes. `userId`, `emailVerified` and
+`phoneVerified` are read-only and are not returned by the API yet, so they are
+currently `null`.
+
+> [!NOTE]
+> The profile API is in beta. A tenant without it enabled, or a token without
+> the required scope, gets a `403` `MyAccountError.ApiError` (for example
+> `A0E-403-0003` "Not Entitled") — not a `404`. Requests are rate limited to
+> about 2 per minute per user, counted separately for `GET` and `PATCH`; going
+> over returns a `429` `ApiError`.
+
+### Update the user profile
+
+Change the signed-in user's profile. The access token must be issued for the
+`https://YOUR_DOMAIN/me/` audience and carry the `update:me:profile` scope. On
+success you get the full updated profile, in the same shape as
+`getUserProfile`.
+
+```kotlin
+val request = UpdateUserProfileRequest(givenName = "Jane", nickname = "jane")
+
+when (val result = auth0.myAccount(accessToken).updateUserProfile(request)) {
+    is Result.Success -> { /* result.data is the updated MyAccountProfile */ }
+    is Result.Failure -> { /* result.error is a MyAccountError */ }
+}
+```
+
+`UpdateUserProfileRequest` has `givenName`, `familyName`, `name`, `nickname` and
+`picture`. Properties left `null` are not sent, so they keep their stored value.
+A request with nothing set is valid: it sends `{}` and returns the current
+profile.
+
+Rejected updates come back as a `400` `MyAccountError.ApiError`, and
+`validationErrors` says which field was at fault:
+
+```kotlin
+is Result.Failure -> {
+    val error = result.error
+    if (error is MyAccountError.ApiError && error.status == 400) {
+        error.validationErrors.forEach {
+            // e.g. pointer = "/given_name", detail = "...", source = "body"
+            showFieldError(it.pointer, it.detail)
+        }
+    }
+}
+```
+
+- **Read-only field** (`A0E-400-0008`, "Read-only Field"): the field cannot be
+  changed, for example because it is managed by an identity provider. Check
+  `profilePolicy` before offering it for editing.
+- **Invalid value** (`A0E-400-0003`): for example a `picture` that is not a URL.
+  The `validationErrors` point at the offending field.
+
+The same `403` and `429` behaviour as `getUserProfile` applies.
+
 ### My Account API errors
 
 ```kotlin
