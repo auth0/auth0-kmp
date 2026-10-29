@@ -23,6 +23,7 @@ import com.auth0.kmp.myaccount.MyAccountClient
 import com.auth0.kmp.myaccount.error.MyAccountError
 import com.auth0.kmp.myaccount.model.EmailAuthenticationMethod
 import com.auth0.kmp.myaccount.model.EmailEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.MyAccountProfile
 import com.auth0.kmp.myaccount.model.PasskeyAuthenticationMethod
 import com.auth0.kmp.myaccount.model.PasskeyEnrollmentChallenge
 import com.auth0.kmp.myaccount.model.PasswordAuthenticationMethod
@@ -37,6 +38,7 @@ import com.auth0.kmp.myaccount.model.RecoveryCodeAuthenticationMethod
 import com.auth0.kmp.myaccount.model.RecoveryCodeEnrollmentChallenge
 import com.auth0.kmp.myaccount.model.TotpAuthenticationMethod
 import com.auth0.kmp.myaccount.model.TotpEnrollmentChallenge
+import com.auth0.kmp.myaccount.model.UpdateUserProfileRequest
 import com.auth0.kmp.networking.NetworkClient
 import com.auth0.kmp.networking.request.NetworkRequest
 import com.auth0.kmp.networking.retry.RetryPolicy
@@ -279,6 +281,17 @@ private class FakeMyAccountClient : MyAccountClient {
         newPassword: String,
         options: RequestOptions,
     ): Result<PasswordAuthenticationMethod, MyAccountError> = error("not used")
+
+    override suspend fun getUserProfile(
+        fields: List<String>?,
+        includeFields: Boolean?,
+        options: RequestOptions,
+    ): Result<MyAccountProfile, MyAccountError> = error("not used")
+
+    override suspend fun updateUserProfile(
+        request: UpdateUserProfileRequest,
+        options: RequestOptions,
+    ): Result<MyAccountProfile, MyAccountError> = error("not used")
 }
 
 /** Records which network client each builder saw and how many times it ran. */
