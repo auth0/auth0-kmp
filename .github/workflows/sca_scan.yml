@@ -19,7 +19,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Run Snyk
-        uses: auth0/devsecops-tooling/.github/actions/sca-scan@main
+        uses: auth0/devsecops-tooling/.github/actions/sca-scan@e29f26478db18ff0bcbe4bc447a8fbd54fbeec9e # main on 2026-11-27, TODO: use a release instead
         with:
           additional-arguments: "--all-projects"
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
